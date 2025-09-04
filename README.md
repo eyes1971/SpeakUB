@@ -316,8 +316,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📚 Similar Projects
 
-- [epub-reader](https://github.com/other/epub-reader) - Simple EPUB reader (original)
-- [terminal-ebook-reader](https://github.com/other/terminal-reader) - Basic terminal reader
+- [epr](https://github.com/wustho/epr) - CLI EPUB reader
+- [epub](https://github.com/rupa/epub) - Simple EPUB reader
 
 ---
 
