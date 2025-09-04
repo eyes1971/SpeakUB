@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Panel title widget for SpeakUB
@@ -67,4 +66,3 @@ class PanelTitle(Static):
 
         # Return a Rich Text object for efficient rendering.
         return Text(full_title_str, no_wrap=True, overflow="ellipsis")
-

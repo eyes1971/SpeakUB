@@ -1,4 +1,3 @@
-
 """
 Content display widget for the EPUB reader.
 """
@@ -345,4 +344,3 @@ class ContentDisplay(Static):
     def action_cursor_end(self):
         if self.app_ref:
             self.app_ref.action_content_end()
-

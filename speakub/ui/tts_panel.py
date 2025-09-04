@@ -1,9 +1,5 @@
-
-from typing import Optional
-
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
-from textual.widget import Widget
+from textual.containers import Container, Horizontal
 from textual.widgets import Button, Input, ProgressBar, Static
 
 
@@ -17,7 +13,7 @@ class TTSPanel(Container):
     Call update_* methods to refresh text from app side (or let TTS widget call them).
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
@@ -56,9 +52,9 @@ class TTSPanel(Container):
 
             # Set flex ratios for responsive layout
             # Note: Using CSS-like flex properties for Textual
-            left.styles.width = "1fr"  # type: ignore[attr-defined]
-            center.styles.width = "8fr"  # type: ignore[attr-defined]
-            right.styles.width = "1fr"  # type: ignore[attr-defined]
+            left.styles.width = "1fr"
+            center.styles.width = "8fr"
+            right.styles.width = "1fr"
 
             # Set minimum widths to prevent collapse
             left.styles.min_width = 10
@@ -164,4 +160,3 @@ class TTSPanel(Container):
             pb.progress = percent
         except Exception as e:
             print(f"Warning: Failed to update progress bar: {e}")
-

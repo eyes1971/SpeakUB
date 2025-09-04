@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Test module for the voice selector functionality in VoiceSelectorPanel.
@@ -10,6 +9,7 @@ from unittest.mock import MagicMock
 
 try:
     import edge_tts
+
     EDGE_TTS_AVAILABLE = True
 except ImportError:
     EDGE_TTS_AVAILABLE = False
@@ -119,8 +119,7 @@ class TestVoiceSelectorIntegration(unittest.TestCase):
         compose_result = list(self.panel.compose())
 
         # Verify that the expected widgets are present
-        widget_ids = [
-            widget.id for widget in compose_result if hasattr(widget, 'id')]
+        widget_ids = [widget.id for widget in compose_result if hasattr(widget, "id")]
 
         self.assertIn("voice-panel-title", widget_ids)
         self.assertIn("voice-table", widget_ids)
@@ -130,4 +129,3 @@ if __name__ == "__main__":
     # Run unit tests
     print("Running voice selector tests...")
     unittest.main(verbosity=2)
-

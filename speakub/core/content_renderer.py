@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Content Renderer - Converts HTML content to text for display.
@@ -6,7 +5,6 @@ Content Renderer - Converts HTML content to text for display.
 
 import re
 from collections import OrderedDict
-from functools import lru_cache
 from typing import List, Optional, Tuple
 
 import html2text
@@ -32,8 +30,7 @@ class EPUBTextRenderer(html2text.HTML2Text):
     # type: ignore
     def handle_tag(self, tag: str, attrs: dict, start: bool) -> Optional[str]:
         """Handle unsupported HTML tags."""
-        unsupported_tags = ["video", "audio",
-                            "script", "iframe", "svg", "canvas"]
+        unsupported_tags = ["video", "audio", "script", "iframe", "svg", "canvas"]
 
         if tag in unsupported_tags:
             if start:
@@ -66,8 +63,7 @@ class ContentRenderer:
         self.content_width = content_width
         self.trace = trace
         # LRU cache for renderers
-        self._renderer_cache: OrderedDict[int,
-                                          EPUBTextRenderer] = OrderedDict()
+        self._renderer_cache: OrderedDict[int, EPUBTextRenderer] = OrderedDict()
 
     def _get_renderer(self, width: int) -> EPUBTextRenderer:
         """Get or create a renderer for the specified width."""
@@ -105,13 +101,11 @@ class ContentRenderer:
             # Apply our CJK-aware wrapping to all lines
             lines = self._fix_cjk_line_wrapping(lines, render_width)
 
-            trace_log(
-                f"[INFO] Rendered {len(lines)} lines with html2text", self.trace)
+            trace_log(f"[INFO] Rendered {len(lines)} lines with html2text", self.trace)
             return lines
 
         except Exception as e:
-            trace_log(
-                f"[WARN] html2text failed: {e}. Using fallback.", self.trace)
+            trace_log(f"[WARN] html2text failed: {e}. Using fallback.", self.trace)
             return self._fallback_render(html_content, render_width)
 
     def _fix_cjk_line_wrapping(self, lines: List[str], width: int) -> List[str]:
@@ -231,8 +225,7 @@ class ContentRenderer:
                 paragraph_lines = self._split_text_by_width(paragraph, width)
                 lines.extend(paragraph_lines)
 
-            trace_log(
-                f"[INFO] Fallback rendered {len(lines)} lines", self.trace)
+            trace_log(f"[INFO] Fallback rendered {len(lines)} lines", self.trace)
             return lines
 
         except Exception as e:

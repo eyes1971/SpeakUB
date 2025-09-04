@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 TTS Widget - UI controls for text-to-speech functionality.
@@ -471,4 +470,3 @@ class TTSRichWidget:
             self.tts_engine.stop()
             if hasattr(self.tts_engine, "cleanup"):
                 self.tts_engine.cleanup()
-

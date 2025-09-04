@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Simulation test for the pitch adjustment bug scenario.
@@ -22,8 +19,7 @@ def simulate_pitch_adjustment_bug():
     # Simulate the FIXED pitch adjustment logic from rich_cli.py
     def action_increase_pitch(current_pitch_str):
         """Increase pitch (make it higher) - FIXED VERSION"""
-        current_pitch_value = int(
-            current_pitch_str.replace("+", "").replace("Hz", ""))
+        current_pitch_value = int(current_pitch_str.replace("+", "").replace("Hz", ""))
         new_pitch_value = min(50, current_pitch_value + 5)  # Max +50Hz
         if new_pitch_value >= 0:
             return f"+{new_pitch_value}Hz"
@@ -113,8 +109,7 @@ def demonstrate_original_bug():
     # Simulate the ORIGINAL buggy pitch adjustment logic
     def buggy_action_increase_pitch(current_pitch_str):
         """Increase pitch (make it higher) - ORIGINAL BUGGY VERSION"""
-        current_pitch_value = int(
-            current_pitch_str.replace("+", "").replace("Hz", ""))
+        current_pitch_value = int(current_pitch_str.replace("+", "").replace("Hz", ""))
         new_pitch_value = min(50, current_pitch_value + 5)  # Max +50Hz
         # BUG: This line was missing the check for negative values!
         # This creates "+-55Hz" for negative values!
@@ -199,4 +194,3 @@ if __name__ == "__main__":
     print("- The buggy code would generate '+-55Hz' instead of '-55Hz'")
     print("- This invalid format '+-55Hz' would later cause int() parsing to fail")
     print("- The fix adds proper negative value handling to prevent this")
-

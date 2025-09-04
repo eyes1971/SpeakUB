@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 UI utilities for SpeakUB
@@ -128,4 +127,3 @@ class UIUtils:
             tree.root.expand()  # type: ignore
         except Exception:
             pass
-

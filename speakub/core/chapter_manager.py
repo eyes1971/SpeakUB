@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Chapter Manager - Handles chapter navigation and organization.
@@ -37,8 +36,7 @@ class ChapterManager:
 
         # Build comprehensive chapter list following epub-tts.py logic
         self.all_chapters = self._build_chapters_from_spine_and_toc()
-        self._chapter_index = {ch["src"]: i for i,
-                               ch in enumerate(self.all_chapters)}
+        self._chapter_index = {ch["src"]: i for i, ch in enumerate(self.all_chapters)}
 
         # Create mapping from src to TOC entries for navigation
         self._build_src_mappings()
@@ -291,4 +289,3 @@ class ChapterManager:
     def get_raw_chapters(self) -> List[Dict]:
         """Get the raw chapters data from TOC parsing."""
         return self.raw_chapters.copy()
-

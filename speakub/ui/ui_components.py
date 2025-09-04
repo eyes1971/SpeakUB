@@ -1,4 +1,3 @@
-
 """
 Common UI components for the EPUB reader.
 """
@@ -44,4 +43,3 @@ class PanelTitle(Static):
         full_title_str = f"{self.main_title}{' ' * padding}{self.right_title}"
 
         return Text(full_title_str, no_wrap=True, overflow="ellipsis")
-

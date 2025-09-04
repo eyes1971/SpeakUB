@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Test script to verify Edge TTS pitch parameter behavior.
@@ -9,6 +6,7 @@ Test script to verify Edge TTS pitch parameter behavior.
 import asyncio
 import os
 import tempfile
+
 import pytest
 
 try:
@@ -77,9 +75,7 @@ async def _test_pitch_value(pitch_value: str, text: str):
                 audio_data += chunk["data"]
 
         # Verify audio data was generated
-        assert len(audio_data) > 0, (
-            f"No audio data generated for pitch {pitch_value}"
-        )
+        assert len(audio_data) > 0, f"No audio data generated for pitch {pitch_value}"
 
         # Save to temporary file to verify it worked
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
@@ -87,16 +83,15 @@ async def _test_pitch_value(pitch_value: str, text: str):
             temp_file_path = temp_file.name
 
         # Verify file was created and has content
-        assert os.path.exists(temp_file_path), (
-            f"Audio file not created for pitch {pitch_value}"
-        )
-        assert os.path.getsize(temp_file_path) > 0, (
-            f"Audio file is empty for pitch {pitch_value}"
-        )
+        assert os.path.exists(
+            temp_file_path
+        ), f"Audio file not created for pitch {pitch_value}"
+        assert (
+            os.path.getsize(temp_file_path) > 0
+        ), f"Audio file is empty for pitch {pitch_value}"
 
         # Clean up
         os.unlink(temp_file_path)
 
     except Exception as e:
         pytest.fail(f"Failed to generate audio for pitch {pitch_value}: {e}")
-

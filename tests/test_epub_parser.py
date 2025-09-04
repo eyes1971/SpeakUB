@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Unit tests for EPUB parser functionality.
@@ -10,6 +7,7 @@ import os
 import tempfile
 import zipfile
 from pathlib import Path
+
 import pytest
 
 from speakub.core.epub_parser import EPUBParser, normalize_src_for_matching
@@ -28,18 +26,15 @@ class TestNormalizeSrcForMatching:
 
     def test_normalize_with_path(self):
         """Test normalizing path with directories."""
-        assert normalize_src_for_matching(
-            "content/chapter1.html") == "chapter1.html"
+        assert normalize_src_for_matching("content/chapter1.html") == "chapter1.html"
 
     def test_normalize_with_fragment(self):
         """Test normalizing URL with fragment."""
-        assert normalize_src_for_matching(
-            "chapter1.html#section1") == "chapter1.html"
+        assert normalize_src_for_matching("chapter1.html#section1") == "chapter1.html"
 
     def test_normalize_percent_encoded(self):
         """Test normalizing percent-encoded URL."""
-        assert normalize_src_for_matching(
-            "chapter%201.html") == "chapter 1.html"
+        assert normalize_src_for_matching("chapter%201.html") == "chapter 1.html"
 
     def test_normalize_case_conversion(self):
         """Test case conversion to lowercase."""
@@ -57,7 +52,7 @@ class TestEPUBParser:
             epub_path = os.path.join(temp_dir, "test.epub")
 
             # Create a minimal EPUB structure
-            with zipfile.ZipFile(epub_path, 'w') as zf:
+            with zipfile.ZipFile(epub_path, "w") as zf:
                 # Add mimetype
                 zf.writestr("mimetype", "application/epub+zip")
 
@@ -153,14 +148,13 @@ class TestEPUBParser:
         """Test zip path normalization."""
         with EPUBParser(sample_epub_path) as parser:
             # Test various path formats
-            assert parser._normalize_zip_path(
-                "chapter1.html") == "chapter1.html"
-            assert parser._normalize_zip_path(
-                "/chapter1.html") == "chapter1.html"
-            assert parser._normalize_zip_path(
-                "content/chapter1.html") == "content/chapter1.html"
-            assert parser._normalize_zip_path(
-                "./chapter1.html") == "chapter1.html"
+            assert parser._normalize_zip_path("chapter1.html") == "chapter1.html"
+            assert parser._normalize_zip_path("/chapter1.html") == "chapter1.html"
+            assert (
+                parser._normalize_zip_path("content/chapter1.html")
+                == "content/chapter1.html"
+            )
+            assert parser._normalize_zip_path("./chapter1.html") == "chapter1.html"
 
     def test_possible_extensions(self, sample_epub_path):
         """Test extension generation."""
@@ -176,6 +170,3 @@ class TestEPUBParser:
             assert ".html" in exts
             assert ".htm" in exts
             assert ".xml" in exts
-
-
-

@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 This module handles configuration management for the EPUB reader.
@@ -54,8 +53,7 @@ def load_config() -> Dict[str, Any]:
         Dict[str, Any]: The configuration dictionary.
     """
     if not os.path.exists(CONFIG_FILE):
-        logger.debug(
-            "Configuration file not found. Creating with default settings.")
+        logger.debug("Configuration file not found. Creating with default settings.")
         save_config(DEFAULT_CONFIG)
         return DEFAULT_CONFIG.copy()
 
@@ -121,8 +119,7 @@ def detect_hardware_profile() -> str:
             return "high_end"
 
     except Exception as e:
-        logger.warning(
-            f"Hardware detection failed: {e}, using mid_range as fallback")
+        logger.warning(f"Hardware detection failed: {e}, using mid_range as fallback")
         return "mid_range"
 
 
@@ -164,12 +161,10 @@ def get_adaptive_cache_config() -> Dict[str, int]:
     try:
         profile = detect_hardware_profile()
         cache_sizes = get_cache_sizes_for_profile(profile)
-        logger.debug(
-            f"Adaptive cache config for {profile} hardware: {cache_sizes}")
+        logger.debug(f"Adaptive cache config for {profile} hardware: {cache_sizes}")
         return cache_sizes
     except Exception as e:
-        logger.warning(
-            f"Failed to get adaptive cache config: {e}, using defaults")
+        logger.warning(f"Failed to get adaptive cache config: {e}, using defaults")
         return {"chapter_cache_size": 50, "width_cache_size": 1000}
 
 
@@ -317,4 +312,3 @@ if __name__ == "__main__":
     assert final_config["language"] == "en"
 
     print("\nConfiguration management test complete.")
-

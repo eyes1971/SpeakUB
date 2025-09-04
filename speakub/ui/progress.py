@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Progress management for SpeakUB
@@ -206,4 +205,3 @@ class ProgressManager:
                 self._idle_check_timer.stop()
             except Exception:
                 pass
-

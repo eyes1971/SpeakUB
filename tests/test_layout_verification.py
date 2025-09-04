@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Simple test to verify the TTS footer layout changes.
@@ -8,6 +5,7 @@ Simple test to verify the TTS footer layout changes.
 
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add the project root to Python path
@@ -24,12 +22,11 @@ def test_layout_structure():
         # Test the compose method structure by inspecting the code
         # Since we can't easily create a full Textual app context in tests,
         # we'll verify the expected structure exists in the compose method
-
         # Import the app class
         from speakub.ui.app import EPUBReaderApp
 
         # Check that the compose method exists
-        assert hasattr(EPUBReaderApp, 'compose'), "compose method not found"
+        assert hasattr(EPUBReaderApp, "compose"), "compose method not found"
 
         # Check that the expected widget types are imported
         # This is a basic sanity check
@@ -39,7 +36,8 @@ def test_layout_structure():
         # Since we can't run compose() without a full app context,
         # we'll just verify that the method exists and the imports work
         print(
-            "✅ Layout structure verification: compose method exists and imports are correct")
+            "✅ Layout structure verification: compose method exists and imports are correct"
+        )
 
     except Exception as e:
         pytest.fail(f"Error during layout test: {e}")
@@ -59,8 +57,7 @@ def test_update_method():
         # Mock the viewport content
         from speakub.ui.widgets.content_widget import ViewportContent
 
-        app.viewport_content = ViewportContent(
-            ["line 1", "line 2", "line 3"], 2)
+        app.viewport_content = ViewportContent(["line 1", "line 2", "line 3"], 2)
 
         # Set some test values
         app.tts_status = "PLAYING"
@@ -111,4 +108,3 @@ if __name__ == "__main__":
     else:
         print("\n❌ Some tests failed!")
         sys.exit(1)
-

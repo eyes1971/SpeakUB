@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Utilities package for SpeakUB.
@@ -30,4 +29,3 @@ __all__ = [
     "load_config",
     "save_config",
 ]
-

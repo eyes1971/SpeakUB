@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Progress Tracker - Saves and loads reading progress.
@@ -192,8 +191,7 @@ class ProgressTracker:
             with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(all_progress, f, indent=2, ensure_ascii=False)
 
-            trace_log(
-                f"[INFO] Progress exported to: {output_file}", self.trace)
+            trace_log(f"[INFO] Progress exported to: {output_file}", self.trace)
             return True
 
         except (IOError, json.JSONDecodeError) as e:
@@ -221,8 +219,7 @@ class ProgressTracker:
             with open(self.progress_file, "w", encoding="utf-8") as f:
                 json.dump(all_progress, f, indent=2, ensure_ascii=False)
 
-            trace_log(
-                f"[INFO] Progress imported from: {input_file}", self.trace)
+            trace_log(f"[INFO] Progress imported from: {input_file}", self.trace)
             return True
 
         except (IOError, json.JSONDecodeError) as e:
@@ -248,8 +245,7 @@ class ProgressTracker:
         for epub_path, progress in all_progress.items():
             # --- Secondary modification point ---
             # Check if there's progress, compatible with old 'position' and new 'cfi'
-            has_progress = progress.get(
-                "cfi") or progress.get("position", 0) > 0
+            has_progress = progress.get("cfi") or progress.get("position", 0) > 0
             if has_progress:
                 stats["books_with_progress"] += 1
 
@@ -273,4 +269,3 @@ class ProgressTracker:
             stats["last_read"] = stats["books_by_date"][0]
 
         return stats
-

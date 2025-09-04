@@ -1,4 +1,3 @@
-
 from typing import Any, Dict, List
 
 from textual.app import ComposeResult
@@ -58,4 +57,3 @@ class VoiceSelectorPanel(Vertical):
         """Handle voice selection event."""
         if event.row_key.value:
             self.post_message(self.VoiceSelected(event.row_key.value))
-

@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 cfi.py - EPUB Canonical Fragment Identifier implementation
@@ -579,4 +578,3 @@ class CFIResolver:
                 root = html_root
 
         return cls.parts_to_node(root, parts)
-

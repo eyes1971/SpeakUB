@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Edge-TTS Provider - Microsoft Edge TTS implementation.
@@ -41,8 +40,7 @@ class EdgeTTSProvider(TTSEngine):
 
         self.audio_player = AudioPlayer()
         self._voices_cache: Optional[List[Dict[str, Any]]] = None
-        self._current_voice = self.DEFAULT_VOICES.get(
-            "zh-TW", "zh-TW-HsiaoChenNeural")
+        self._current_voice = self.DEFAULT_VOICES.get("zh-TW", "zh-TW-HsiaoChenNeural")
 
         # Set up audio player callbacks
         self.audio_player.on_state_changed = self._on_audio_state_changed
@@ -157,7 +155,8 @@ class EdgeTTSProvider(TTSEngine):
 
         # Check for valid voice name pattern: xx-XX-Name format
         import re
-        if re.match(r'^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$', voice_name):
+
+        if re.match(r"^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$", voice_name):
             self._current_voice = voice_name
             return True
 
@@ -238,4 +237,3 @@ class EdgeTTSProvider(TTSEngine):
         """Get current TTS pitch."""
         # Return default pitch since it's synthesis-time parameter
         return "+0Hz"
-

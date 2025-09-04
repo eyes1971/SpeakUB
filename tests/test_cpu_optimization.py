@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 CPU Optimization Test Script for SpeakUB
@@ -347,4 +344,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

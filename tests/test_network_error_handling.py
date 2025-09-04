@@ -1,22 +1,22 @@
-
 #!/usr/bin/env python3
 """
 Test script for TTS network error handling.
 This script simulates network failures and tests edge-tts error handling.
 """
 
-from speakub.tts.edge_tts_provider import EdgeTTSProvider
 import asyncio
 import socket
 import subprocess
 import sys
 import time
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
+from speakub.tts.edge_tts_provider import EdgeTTSProvider
 
 # Add the project root to Python path
-sys.path.insert(
-    0, '/home/sam/Templates/epub-reader-rich 專案/epub-reader-rich_V20')
+sys.path.insert(0, "/home/sam/Templates/epub-reader-rich 專案/epub-reader-rich_V20")
 
 
 class NetworkErrorSimulator:
@@ -28,8 +28,10 @@ class NetworkErrorSimulator:
 
     def simulate_dns_failure(self):
         """Simulate DNS resolution failure."""
+
         def mock_getaddrinfo(*args, **kwargs):
             raise socket.gaierror(-3, "Temporary failure in name resolution")
+
         socket.getaddrinfo = mock_getaddrinfo
 
     def simulate_connection_timeout(self):
@@ -37,6 +39,7 @@ class NetworkErrorSimulator:
 
         def mock_connect(self, address):
             raise socket.timeout("Connection timed out")
+
         socket.socket.connect = mock_connect
 
     def simulate_connection_refused(self):
@@ -84,11 +87,12 @@ async def test_edge_tts_network_errors():
                     voice="zh-TW-HsiaoChenNeural",
                     rate="+0%",
                     volume="+0%",
-                    pitch="+0Hz"
+                    pitch="+0Hz",
                 )
                 print(f"❌ UNEXPECTED: Synthesis succeeded despite {test_name}")
                 print(
-                    f"   Audio data length: {len(audio_data) if audio_data else 0} bytes")
+                    f"   Audio data length: {len(audio_data) if audio_data else 0} bytes"
+                )
 
             except Exception as e:
                 elapsed = time.time() - start_time
@@ -101,20 +105,34 @@ async def test_edge_tts_network_errors():
                 # Check if it's a network-related error
                 error_msg = str(e).lower()
                 network_keywords = [
-                    "network", "connection", "timeout", "dns", "host",
-                    "socket", "url", "getaddrinfo", "unreachable",
-                    "nodename", "servname", "http", "request",
-                    "temporary failure", "resolution"
+                    "network",
+                    "connection",
+                    "timeout",
+                    "dns",
+                    "host",
+                    "socket",
+                    "url",
+                    "getaddrinfo",
+                    "unreachable",
+                    "nodename",
+                    "servname",
+                    "http",
+                    "request",
+                    "temporary failure",
+                    "resolution",
                 ]
 
                 is_network_error = any(
-                    keyword in error_msg for keyword in network_keywords)
+                    keyword in error_msg for keyword in network_keywords
+                )
                 print(
-                    f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}")
+                    f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}"
+                )
 
                 if not is_network_error:
                     print(
-                        "   ⚠️  WARNING: Error doesn't match expected network error patterns")
+                        "   ⚠️  WARNING: Error doesn't match expected network error patterns"
+                    )
 
         except Exception as e:
             print(f"❌ TEST ERROR: {type(e).__name__}: {str(e)}")
@@ -148,7 +166,7 @@ async def test_edge_tts_during_operation():
             voice="zh-TW-HsiaoChenNeural",
             rate="+0%",
             volume="+0%",
-            pitch="+0Hz"
+            pitch="+0Hz",
         )
     )
 
@@ -162,9 +180,10 @@ async def test_edge_tts_during_operation():
     try:
         # Wait for synthesis to complete or fail
         audio_data = await asyncio.wait_for(synthesis_task, timeout=30)
-        print(f"❌ UNEXPECTED: Synthesis succeeded despite network failure during operation")
         print(
-            f"   Audio data length: {len(audio_data) if audio_data else 0} bytes")
+            f"❌ UNEXPECTED: Synthesis succeeded despite network failure during operation"
+        )
+        print(f"   Audio data length: {len(audio_data) if audio_data else 0} bytes")
 
     except asyncio.TimeoutError:
         print("⏰ Synthesis timed out")
@@ -179,16 +198,25 @@ async def test_edge_tts_during_operation():
         # Check if it's a network-related error
         error_msg = str(e).lower()
         network_keywords = [
-            "network", "connection", "timeout", "dns", "host",
-            "socket", "url", "getaddrinfo", "unreachable",
-            "nodename", "servname", "http", "request",
-            "temporary failure", "resolution"
+            "network",
+            "connection",
+            "timeout",
+            "dns",
+            "host",
+            "socket",
+            "url",
+            "getaddrinfo",
+            "unreachable",
+            "nodename",
+            "servname",
+            "http",
+            "request",
+            "temporary failure",
+            "resolution",
         ]
 
-        is_network_error = any(
-            keyword in error_msg for keyword in network_keywords)
-        print(
-            f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}")
+        is_network_error = any(keyword in error_msg for keyword in network_keywords)
+        print(f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}")
 
     finally:
         # Restore network functionality
@@ -214,7 +242,8 @@ def test_command_line_edge_tts():
         print(f"Running: {cmd}")
         try:
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=30)
+                cmd, shell=True, capture_output=True, text=True, timeout=30
+            )
             print(f"Return code: {result.returncode}")
             if result.stdout:
                 print(f"STDOUT: {result.stdout}")
@@ -259,10 +288,11 @@ def mock_aiohttp_connector():
                         ssl=None,
                         proxy=None,
                         proxy_auth=None,
-                        proxy_headers_hash=None
+                        proxy_headers_hash=None,
                     ),
-                    exc=Exception("Temporary failure in name resolution")
+                    exc=Exception("Temporary failure in name resolution"),
                 )
+
             self.connect = mock_connect
 
         # Apply mock
@@ -271,8 +301,7 @@ def mock_aiohttp_connector():
         try:
             print("Testing with mocked aiohttp connector...")
             audio_data = await provider.synthesize(
-                text="Test simulated network error",
-                voice="zh-TW-HsiaoChenNeural"
+                text="Test simulated network error", voice="zh-TW-HsiaoChenNeural"
             )
             print("❌ UNEXPECTED: Synthesis succeeded with mocked error")
         except Exception as e:
@@ -299,8 +328,7 @@ if __name__ == "__main__":
         elif test_type == "mock":
             mock_aiohttp_connector()
         else:
-            print(
-                "Usage: python test_network_error_handling.py [command|mock]")
+            print("Usage: python test_network_error_handling.py [command|mock]")
             print("  command: Test edge-tts command line")
             print("  mock: Test with mocked aiohttp connector")
     else:

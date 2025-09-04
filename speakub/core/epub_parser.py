@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Robust EPUB parser helpers: find OPF, parse manifest/spine, and robustly resolve
@@ -17,7 +16,7 @@ import logging
 import os
 import xml.etree.ElementTree as ET
 import zipfile
-from collections import OrderedDict
+
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
@@ -179,14 +178,11 @@ class EPUBParser:
             )
 
         # common prefixes
-        common_prefixes = ("OEBPS", "OPS", "Content",
-                           "content", "EPUB", "html")
+        common_prefixes = ("OEBPS", "OPS", "Content", "content", "EPUB", "html")
         for prefix in common_prefixes:
-            candidates.append(self._normalize_zip_path(
-                os.path.join(prefix, href_unq)))
+            candidates.append(self._normalize_zip_path(os.path.join(prefix, href_unq)))
             candidates.append(
-                self._normalize_zip_path(
-                    os.path.join(prefix, href_unq.lstrip("/")))
+                self._normalize_zip_path(os.path.join(prefix, href_unq.lstrip("/")))
             )
 
         # try with/without extensions if missing
@@ -203,8 +199,7 @@ class EPUBParser:
                     )
                 for prefix in common_prefixes:
                     candidates.append(
-                        self._normalize_zip_path(
-                            os.path.join(prefix, base_no_ext + e))
+                        self._normalize_zip_path(os.path.join(prefix, base_no_ext + e))
                     )
 
         # basename only fallback
@@ -269,7 +264,8 @@ class EPUBParser:
             return text
         except Exception:
             logger.exception(
-                "Failed to read zip entry '%s' for src '%s'", zip_path, src)
+                "Failed to read zip entry '%s' for src '%s'", zip_path, src
+            )
             raise
 
     def read_chapter(self, src: str) -> str:
@@ -307,7 +303,8 @@ class EPUBParser:
                 except Exception:
                     logger.exception(
                         "Failed to read fallback zip entry '%s' for src '%s'",
-                        found, src
+                        found,
+                        src,
                     )
 
         # last resort: case-insensitive suffix match using src
@@ -322,13 +319,12 @@ class EPUBParser:
                 except Exception:
                     logger.exception(
                         "Failed to read candidate zip entry '%s' for src '%s'",
-                        name, src
+                        name,
+                        src,
                     )
 
-        logger.error(
-            "Chapter file not found for src '%s'. Tried: %s", src, tried)
-        raise FileNotFoundError(
-            f"Chapter file not found: {src} (tried: {tried})")
+        logger.error("Chapter file not found for src '%s'. Tried: %s", src, tried)
+        raise FileNotFoundError(f"Chapter file not found: {src} (tried: {tried})")
 
     def parse_toc(self) -> Dict:
         """
@@ -464,8 +460,7 @@ class EPUBParser:
                     if idref and idref in manifest:
                         spine_order.append(manifest[idref]["href"])
 
-        logger.debug(
-            f"Successfully parsed spine with {len(spine_order)} items.")
+        logger.debug(f"Successfully parsed spine with {len(spine_order)} items.")
 
         # Extract TOC entries using the priority logic from epub-tts.py
         raw_chapters = []
@@ -500,8 +495,7 @@ class EPUBParser:
                 title = " ".join(
                     word.capitalize() for word in title.split()
                 )  # Capitalize words
-                logger.debug(
-                    f"  item: Creating chapter from spine: '{title}' -> '{s}'")
+                logger.debug(f"  item: Creating chapter from spine: '{title}' -> '{s}'")
                 raw_chapters.append(
                     {
                         "type": "chapter",
@@ -519,8 +513,7 @@ class EPUBParser:
         for chap in raw_chapters:
             title = chap["title"]
             if chap.get("type") == "group_header":
-                logger.debug(
-                    f"Creating new group from 'group_header': '{title}'")
+                logger.debug(f"Creating new group from 'group_header': '{title}'")
                 current_group = {
                     "type": "group",
                     "title": title,
@@ -544,20 +537,17 @@ class EPUBParser:
                 }
                 nodes.append(current_group)
             else:
-                node = {"type": "chapter", "title": title,
-                        "src": chap.get("src")}
+                node = {"type": "chapter", "title": title, "src": chap.get("src")}
                 if current_group:
                     logger.debug(
                         f"  Adding chapter '{title}' to group '{current_group['title']}'"
                     )
                     current_group["children"].append(node)
                 else:
-                    logger.debug(
-                        f"Adding chapter '{title}' as a top-level node.")
+                    logger.debug(f"Adding chapter '{title}' as a top-level node.")
                     nodes.append(node)
 
-        logger.debug(
-            f"--- TOC Build Process Finished. Final source: {toc_source} ---")
+        logger.debug(f"--- TOC Build Process Finished. Final source: {toc_source} ---")
 
         return {
             "book_title": book_title,
@@ -580,8 +570,7 @@ class EPUBParser:
                 else:
                     logger.debug("-> dc:title tag was found, but it is EMPTY.")
             else:
-                logger.debug(
-                    "-> dc:title tag not found, using default filename.")
+                logger.debug("-> dc:title tag not found, using default filename.")
         else:
             # ElementTree approach
             title_elem = (
@@ -625,10 +614,8 @@ class EPUBParser:
 
                 if span_tag:
                     title = " ".join(span_tag.text.strip().split())
-                    logger.debug(
-                        f"  item {i}: Found group header (<span>): '{title}'")
-                    raw_chapters.append(
-                        {"type": "group_header", "title": title})
+                    logger.debug(f"  item {i}: Found group header (<span>): '{title}'")
+                    raw_chapters.append({"type": "group_header", "title": title})
                 elif a_tag and a_tag.get("href"):
                     href = a_tag.get("href")
                     # Resolve href relative to the nav document
@@ -669,8 +656,7 @@ class EPUBParser:
                     ".//{http://www.daisy.org/z3986/2005/ncx/}navPoint"
                 )
 
-            logger.debug(
-                f"Found {len(nav_points)} <navPoint> items in toc.ncx")
+            logger.debug(f"Found {len(nav_points)} <navPoint> items in toc.ncx")
             raw_chapters = []
 
             for i, navPoint in enumerate(nav_points):
@@ -712,8 +698,7 @@ class EPUBParser:
                     if content is None:
                         content = navPoint.find(".//content")
 
-                    href = content.attrib.get(
-                        "src", "") if content is not None else ""
+                    href = content.attrib.get("src", "") if content is not None else ""
 
                     if title and href:
                         full_path = os.path.normpath(os.path.join(basedir, href)).split(
@@ -797,4 +782,3 @@ class EPUBParser:
                 "toc_source": "error",
                 "raw_chapters": [],
             }
-

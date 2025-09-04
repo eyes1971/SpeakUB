@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 TTS integration for SpeakUB
@@ -76,8 +75,7 @@ class TTSIntegration:
             controls_widget = self.app.query_one("#tts-controls", Static)
             percent = None
             if status == "PLAYING" and self.tts_playlist:
-                total, current = len(
-                    self.tts_playlist), self.tts_playlist_index
+                total, current = len(self.tts_playlist), self.tts_playlist_index
                 if total > 0:
                     percent = int((current / total) * 100)
             p_disp = f"{percent}%" if percent is not None else "--"
@@ -103,8 +101,7 @@ class TTSIntegration:
         with self.tts_lock:
             self.tts_playlist, self.tts_playlist_index = [], 0
             cursor_idx = self.app.viewport_content.get_cursor_global_position()
-            para_info = self.app.viewport_content.line_to_paragraph_map.get(
-                cursor_idx)
+            para_info = self.app.viewport_content.line_to_paragraph_map.get(cursor_idx)
             if not para_info:
                 for i in range(
                     cursor_idx, len(self.app.viewport_content.content_lines)
@@ -138,7 +135,7 @@ class TTSIntegration:
                     self.app.notify(
                         "Restarting TTS playback...",
                         title="TTS Resume",
-                        severity="information"
+                        severity="information",
                     )
                 self.start_tts_thread()
             elif self.app.tts_status == "STOPPED":
@@ -214,8 +211,7 @@ class TTSIntegration:
             return
         try:
             rate, volume = f"{self.app.tts_rate:+}%", f"{self.app.tts_volume - 100:+}%"
-            kwargs = {"rate": rate, "volume": volume,
-                      "pitch": self.app.tts_pitch}
+            kwargs = {"rate": rate, "volume": volume, "pitch": self.app.tts_pitch}
             if hasattr(self.app.tts_engine, "speak_text_sync"):
                 self.app.tts_engine.speak_text_sync(text, **kwargs)
         except Exception as e:
@@ -253,8 +249,7 @@ class TTSIntegration:
                     break
 
                 with self.tts_lock:
-                    exhausted = self.tts_playlist_index >= len(
-                        self.tts_playlist)
+                    exhausted = self.tts_playlist_index >= len(self.tts_playlist)
                 if exhausted:
                     if not self._tts_load_next_chapter():
                         break
@@ -276,12 +271,16 @@ class TTSIntegration:
                         self.app.viewport_content.cursor_in_page = max(
                             0, min(cursor, lines - 1)
                         )
-                        self.app.call_from_thread(
-                            self.app._update_content_display)
+                        self.app.call_from_thread(self.app._update_content_display)
                 if self.app.tts_engine:
                     try:
                         self.speak_with_engine(text)
-                    except (socket.gaierror, socket.timeout, ConnectionError, OSError) as e:
+                    except (
+                        socket.gaierror,
+                        socket.timeout,
+                        ConnectionError,
+                        OSError,
+                    ) as e:
                         # Handle confirmed network errors - show notification and pause TTS
                         self.last_tts_error = str(e)
                         if not self.network_error_occurred:
@@ -293,13 +292,17 @@ class TTSIntegration:
                                 self.app.run_worker,
                                 self._monitor_network_recovery,
                                 exclusive=True,
-                                thread=True
+                                thread=True,
                             )
                         # Show network error notification
                         if not self.network_error_notified:
                             error_msg = "Network connection interrupted, TTS paused. Press Space to continue after network recovery."
                             self.app.call_from_thread(
-                                self.app.notify, error_msg, title="Network Error", severity="warning")
+                                self.app.notify,
+                                error_msg,
+                                title="Network Error",
+                                severity="warning",
+                            )
                             self.network_error_notified = True
                         break  # Stop playback thread
                     except Exception as e:
@@ -307,9 +310,19 @@ class TTSIntegration:
                         self.last_tts_error = str(e)
 
                         error_keywords = [
-                            "network", "connection", "timeout", "dns", "host",
-                            "socket", "url", "getaddrinfo", "unreachable",
-                            "nodename", "servname", "http", "request"
+                            "network",
+                            "connection",
+                            "timeout",
+                            "dns",
+                            "host",
+                            "socket",
+                            "url",
+                            "getaddrinfo",
+                            "unreachable",
+                            "nodename",
+                            "servname",
+                            "http",
+                            "request",
                         ]
                         error_msg = str(e).lower()
 
@@ -323,18 +336,25 @@ class TTSIntegration:
                                     self.app.run_worker,
                                     self._monitor_network_recovery,
                                     exclusive=True,
-                                    thread=True
+                                    thread=True,
                                 )
                             # Show network error notification
                             if not self.network_error_notified:
                                 error_msg = "Network connection interrupted, TTS paused. Press Space to continue after network recovery."
                                 self.app.call_from_thread(
-                                    self.app.notify, error_msg, title="Network Error", severity="warning")
+                                    self.app.notify,
+                                    error_msg,
+                                    title="Network Error",
+                                    severity="warning",
+                                )
                                 self.network_error_notified = True
                             break  # Stop playback thread
                         else:
                             # Check for NoAudioReceived error (unpronounceable characters)
-                            if "no audio was received" in str(e).lower() or "noaudioreceived" in str(type(e).__name__).lower():
+                            if (
+                                "no audio was received" in str(e).lower()
+                                or "noaudioreceived" in str(type(e).__name__).lower()
+                            ):
                                 # Skip unpronounceable text silently without notification
                                 with self.tts_lock:
                                     self.tts_playlist_index += 1
@@ -344,12 +364,19 @@ class TTSIntegration:
                                 error_msg = f"TTS playback failed: {str(e)}"
                                 if "timeout" in str(e).lower():
                                     error_msg = "TTS playback timed out. The service may be busy."
-                                elif "rate limit" in str(e).lower() or "quota" in str(e).lower():
+                                elif (
+                                    "rate limit" in str(e).lower()
+                                    or "quota" in str(e).lower()
+                                ):
                                     error_msg = "TTS service rate limit exceeded. Please try again later."
                                 else:
                                     error_msg = f"TTS playback failed: {str(e)}"
                                 self.app.call_from_thread(
-                                    self.app.notify, error_msg, title="TTS Playback Error", severity="error")
+                                    self.app.notify,
+                                    error_msg,
+                                    title="TTS Playback Error",
+                                    severity="error",
+                                )
                                 # Continue to next item instead of breaking
                                 with self.tts_lock:
                                     self.tts_playlist_index += 1
@@ -368,15 +395,13 @@ class TTSIntegration:
             while True:
                 if not self.app.chapter_manager or not search_chapter:
                     return False
-                next_chapter = self.app.chapter_manager.get_next_chapter(
-                    search_chapter)
+                next_chapter = self.app.chapter_manager.get_next_chapter(search_chapter)
                 if not next_chapter:
                     return False
                 try:
                     if not self.app.epub_parser or not self.app.content_renderer:
                         return False
-                    html = self.app.epub_parser.read_chapter(
-                        next_chapter["src"])
+                    html = self.app.epub_parser.read_chapter(next_chapter["src"])
                     lines = self.app.content_renderer.render_chapter(html)
                     if self.app.viewport_content:
                         temp_vp = self.app.viewport_content.__class__(
@@ -393,8 +418,7 @@ class TTSIntegration:
                         self.tts_playlist, self.tts_playlist_index = new_playlist, 0
                         self.app.call_from_thread(
                             self.app.run_worker,
-                            self.app._load_chapter(
-                                next_chapter, from_start=True),
+                            self.app._load_chapter(next_chapter, from_start=True),
                         )
                         return True
                     else:
@@ -419,8 +443,7 @@ class TTSIntegration:
         try:
             while not self.tts_stop_requested.is_set():
                 with self.tts_lock:
-                    exhausted = self.tts_playlist_index >= len(
-                        self.tts_playlist)
+                    exhausted = self.tts_playlist_index >= len(self.tts_playlist)
                 if exhausted:
                     if not self._tts_load_next_chapter():
                         break
@@ -459,8 +482,7 @@ class TTSIntegration:
                             self.app.viewport_content.cursor_in_page = max(
                                 0, min(cursor, lines - 1)
                             )
-                            self.app.call_from_thread(
-                                self.app._update_content_display)
+                            self.app.call_from_thread(self.app._update_content_display)
 
                     # Play audio and handle playback completion properly
                     if (
@@ -474,7 +496,12 @@ class TTSIntegration:
                                 self.app.tts_engine._event_loop,
                             )
                             future.result()
-                        except (socket.gaierror, socket.timeout, ConnectionError, OSError) as e:
+                        except (
+                            socket.gaierror,
+                            socket.timeout,
+                            ConnectionError,
+                            OSError,
+                        ) as e:
                             # Handle confirmed network errors in parallel playback
                             self.last_tts_error = str(e)
                             if not self.network_error_occurred:
@@ -486,13 +513,17 @@ class TTSIntegration:
                                     self.app.run_worker,
                                     self._monitor_network_recovery,
                                     exclusive=True,
-                                    thread=True
+                                    thread=True,
                                 )
                             # Show network error notification
                             if not self.network_error_notified:
                                 error_msg = "Network connection interrupted, TTS paused. Press Space to continue after network recovery."
                                 self.app.call_from_thread(
-                                    self.app.notify, error_msg, title="Network Error", severity="warning")
+                                    self.app.notify,
+                                    error_msg,
+                                    title="Network Error",
+                                    severity="warning",
+                                )
                                 self.network_error_notified = True
                             break  # Stop playback thread
                         except Exception as e:
@@ -500,9 +531,19 @@ class TTSIntegration:
                             self.last_tts_error = f"Playback failed: {str(e)}"
 
                             error_keywords = [
-                                "network", "connection", "timeout", "dns", "host",
-                                "socket", "url", "getaddrinfo", "unreachable",
-                                "nodename", "servname", "http", "request"
+                                "network",
+                                "connection",
+                                "timeout",
+                                "dns",
+                                "host",
+                                "socket",
+                                "url",
+                                "getaddrinfo",
+                                "unreachable",
+                                "nodename",
+                                "servname",
+                                "http",
+                                "request",
                             ]
                             error_msg = str(e).lower()
 
@@ -516,26 +557,41 @@ class TTSIntegration:
                                         self.app.run_worker,
                                         self._monitor_network_recovery,
                                         exclusive=True,
-                                        thread=True
+                                        thread=True,
                                     )
                                 # Show network error notification
                                 if not self.network_error_notified:
                                     error_msg = "Network connection interrupted, TTS paused. Press Space to continue after network recovery."
                                     self.app.call_from_thread(
-                                        self.app.notify, error_msg, title="Network Error", severity="warning")
+                                        self.app.notify,
+                                        error_msg,
+                                        title="Network Error",
+                                        severity="warning",
+                                    )
                                     self.network_error_notified = True
                                 break  # Stop playback thread
                             else:
                                 # For non-network errors, notify user
                                 playback_error_msg = f"TTS playback failed: {str(e)}"
-                                if "device" in str(e).lower() or "audio" in str(e).lower():
-                                    playback_error_msg = "Audio device error. Check your audio settings."
+                                if (
+                                    "device" in str(e).lower()
+                                    or "audio" in str(e).lower()
+                                ):
+                                    playback_error_msg = (
+                                        "Audio device error. Check your audio settings."
+                                    )
                                 elif "format" in str(e).lower():
                                     playback_error_msg = "Audio format not supported. Try different TTS settings."
                                 else:
-                                    playback_error_msg = f"TTS playback failed: {str(e)}"
+                                    playback_error_msg = (
+                                        f"TTS playback failed: {str(e)}"
+                                    )
                                 self.app.call_from_thread(
-                                    self.app.notify, playback_error_msg, title="TTS Playback Error", severity="error")
+                                    self.app.notify,
+                                    playback_error_msg,
+                                    title="TTS Playback Error",
+                                    severity="error",
+                                )
                                 # Continue to next item instead of breaking
                                 with self.tts_lock:
                                     self.tts_playlist_index += 1
@@ -550,8 +606,7 @@ class TTSIntegration:
                     # Use event-driven waiting instead of polling
                     self.tts_synthesis_ready.clear()
                     # Wait for synthesis to be ready with timeout
-                    synthesis_ready = self.tts_synthesis_ready.wait(
-                        timeout=0.1)
+                    synthesis_ready = self.tts_synthesis_ready.wait(timeout=0.1)
                     if not synthesis_ready:
                         # Timeout occurred, continue polling but less frequently
                         time.sleep(0.05)
@@ -606,13 +661,19 @@ class TTSIntegration:
                         else:
                             # Edge-TTS returned None or ERROR marker
                             audio_data = b"FAILED_SYNTHESIS"
-                    except (socket.gaierror, socket.timeout, ConnectionError, OSError) as e:
+                    except (
+                        socket.gaierror,
+                        socket.timeout,
+                        ConnectionError,
+                        OSError,
+                    ) as e:
                         # Handle confirmed network errors in synthesis
                         self.last_tts_error = f"Synthesis failed for text: {text_to_synthesize[:50]}... Error: {str(e)}"
                         audio_data = b"FAILED_SYNTHESIS"
 
                         print(
-                            f"DEBUG: Confirmed network error in synthesis: {type(e).__name__} - {str(e)}")
+                            f"DEBUG: Confirmed network error in synthesis: {type(e).__name__} - {str(e)}"
+                        )
 
                         # Set global network error flag
                         if not self.network_error_occurred:
@@ -630,15 +691,26 @@ class TTSIntegration:
                         print(f"DEBUG: Error type: {type(e).__name__}")
 
                         error_keywords = [
-                            "network", "connection", "timeout", "dns", "host",
-                            "socket", "url", "getaddrinfo", "unreachable",
-                            "nodename", "servname", "http", "request"
+                            "network",
+                            "connection",
+                            "timeout",
+                            "dns",
+                            "host",
+                            "socket",
+                            "url",
+                            "getaddrinfo",
+                            "unreachable",
+                            "nodename",
+                            "servname",
+                            "http",
+                            "request",
                         ]
                         error_msg = str(e).lower()
 
                         if any(keyword in error_msg for keyword in error_keywords):
                             print(
-                                "DEBUG: Network error detected via keywords in synthesis")
+                                "DEBUG: Network error detected via keywords in synthesis"
+                            )
 
                             # Set global network error flag
                             if not self.network_error_occurred:
@@ -649,25 +721,36 @@ class TTSIntegration:
                             break  # Stop synthesis worker
                         else:
                             # Check for NoAudioReceived error (unpronounceable characters)
-                            if "no audio was received" in str(e).lower() or "noaudioreceived" in str(type(e).__name__).lower():
+                            if (
+                                "no audio was received" in str(e).lower()
+                                or "noaudioreceived" in str(type(e).__name__).lower()
+                            ):
                                 print(
-                                    "DEBUG: NoAudioReceived error detected in synthesis - skipping silently")
+                                    "DEBUG: NoAudioReceived error detected in synthesis - skipping silently"
+                                )
                                 # Mark as failed synthesis but don't show notification
                             else:
-                                print(
-                                    "DEBUG: Non-network error detected in synthesis")
+                                print("DEBUG: Non-network error detected in synthesis")
                                 # For non-network errors, notify user
                                 error_msg = f"TTS synthesis failed: {str(e)}"
                                 if "timeout" in str(e).lower():
                                     error_msg = "TTS synthesis timed out. The service may be busy."
-                                elif "rate limit" in str(e).lower() or "quota" in str(e).lower():
+                                elif (
+                                    "rate limit" in str(e).lower()
+                                    or "quota" in str(e).lower()
+                                ):
                                     error_msg = "TTS service rate limit exceeded. Please try again later."
                                 else:
                                     error_msg = f"TTS synthesis failed: {str(e)}"
                                 print(
-                                    f"DEBUG: Sending synthesis error notification: {error_msg}")
+                                    f"DEBUG: Sending synthesis error notification: {error_msg}"
+                                )
                                 self.app.call_from_thread(
-                                    self.app.notify, error_msg, title="TTS Error", severity="error")
+                                    self.app.notify,
+                                    error_msg,
+                                    title="TTS Error",
+                                    severity="error",
+                                )
 
                     with self.tts_lock:
                         if (
@@ -716,7 +799,7 @@ class TTSIntegration:
                 self.app.run_worker,
                 self._monitor_network_recovery,
                 exclusive=True,
-                thread=True
+                thread=True,
             )
 
         # Pause TTS playback and update status
@@ -738,8 +821,7 @@ class TTSIntegration:
 
         print("DEBUG: _monitor_network_recovery started")
         print(f"DEBUG: network_error_occurred = {self.network_error_occurred}")
-        print(
-            f"DEBUG: network_recovery_notified = {self.network_recovery_notified}")
+        print(f"DEBUG: network_recovery_notified = {self.network_recovery_notified}")
 
         while self.network_error_occurred and not self.tts_stop_requested.is_set():
             print("DEBUG: Checking network connectivity...")
@@ -754,15 +836,14 @@ class TTSIntegration:
                         self.app.notify,
                         "Network connection restored! Press Space to continue TTS playback.",
                         title="Network Recovery",
-                        severity="information"
+                        severity="information",
                     )
                     self.network_recovery_notified = True
                     self.network_error_occurred = False
                 break
             except (socket.timeout, socket.error) as e:
                 # Network still down, wait and try again
-                print(
-                    f"DEBUG: Network check failed: {str(e)}, waiting 10 seconds...")
+                print(f"DEBUG: Network check failed: {str(e)}, waiting 10 seconds...")
                 time.sleep(10)  # Check every 10 seconds
 
         print("DEBUG: _monitor_network_recovery finished")

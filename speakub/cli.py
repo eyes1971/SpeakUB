@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 SpeakUB CLI - Entry point for the application
@@ -50,4 +49,3 @@ def main(argv: Optional[List[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

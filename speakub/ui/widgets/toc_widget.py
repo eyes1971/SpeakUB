@@ -1,4 +1,3 @@
-
 """
 TOC (Table of Contents) widget for the EPUB reader.
 """
@@ -82,4 +81,3 @@ class TOCWidget(Tree):
 
         build_path(self.root, chapter_data)
         return path
-

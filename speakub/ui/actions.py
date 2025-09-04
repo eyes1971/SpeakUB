@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # Action handlers for SpeakUB Application
 
@@ -27,8 +26,7 @@ class SpeakUBActions:
             }
             save_tts_config(tts_config)
         except Exception as e:
-            self.app.notify(
-                f"Failed to save TTS config: {e}", severity="warning")
+            self.app.notify(f"Failed to save TTS config: {e}", severity="warning")
 
     def action_quit(self) -> None:
         """Quit the application."""
@@ -124,8 +122,7 @@ class SpeakUBActions:
         if at_chapter_start:
             prev_chapter = self.find_prev_chapter()
             if prev_chapter:
-                self.app.run_worker(self.app._load_chapter(
-                    prev_chapter, from_end=True))
+                self.app.run_worker(self.app._load_chapter(prev_chapter, from_end=True))
         self.app._update_content_display()
 
     def action_content_down(self) -> None:
@@ -155,8 +152,7 @@ class SpeakUBActions:
         if at_chapter_start:
             prev_chapter = self.find_prev_chapter()
             if prev_chapter:
-                self.app.run_worker(self.app._load_chapter(
-                    prev_chapter, from_end=True))
+                self.app.run_worker(self.app._load_chapter(prev_chapter, from_end=True))
         self.app._update_content_display()
 
     def action_content_page_down(self) -> None:
@@ -215,4 +211,3 @@ class SpeakUBActions:
         if not self.app.current_chapter or not self.app.chapter_manager:
             return None
         return self.app.chapter_manager.get_previous_chapter(self.app.current_chapter)
-

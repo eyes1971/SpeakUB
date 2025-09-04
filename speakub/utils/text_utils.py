@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Text processing utilities.
@@ -313,8 +312,7 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
 
     # Calculate average word length
     word_lengths = [len(word.strip(".,!?;:")) for word in text.split()]
-    avg_word_length = sum(word_lengths) / \
-        len(word_lengths) if word_lengths else 0
+    avg_word_length = sum(word_lengths) / len(word_lengths) if word_lengths else 0
 
     # Simple complexity estimation
     if sentences == 0:
@@ -337,4 +335,3 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
         "words_per_sentence": float(round(words_per_sentence, 1)),
         "complexity": complexity,
     }
-

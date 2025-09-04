@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Test script to verify pitch adjustment fix for negative values.
@@ -126,6 +123,3 @@ if __name__ == "__main__":
     test_edge_case_invalid_format()
 
     print("\nTest completed!")
-
-
-

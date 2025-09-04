@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # TTS Engine - Abstract base for text-to-speech functionality.
 
@@ -212,4 +211,3 @@ class TTSEngine(ABC):
         pass
 
     # ***** END OF FIX *****
-

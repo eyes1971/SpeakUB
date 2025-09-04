@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Test edge cases for TTS exit fix.
@@ -217,6 +214,3 @@ if __name__ == "__main__":
 
     test = EdgeCaseTest()
     test.test_edge_cases()
-
-
-

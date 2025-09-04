@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Test module for switching Edge-TTS voices during script execution.
@@ -11,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 try:
     import edge_tts
+
     EDGE_TTS_AVAILABLE = True
 except ImportError:
     EDGE_TTS_AVAILABLE = False
@@ -79,10 +79,10 @@ class TestVoiceSwitching(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test fixtures."""
-        if hasattr(self, 'provider'):
+        if hasattr(self, "provider"):
             self.provider.stop_async_loop()
 
-    @patch('edge_tts.list_voices')
+    @patch("edge_tts.list_voices")
     async def test_get_available_voices(self, mock_list_voices):
         """Test getting available voices."""
         mock_list_voices.return_value = self.mock_voices
@@ -94,18 +94,19 @@ class TestVoiceSwitching(unittest.TestCase):
 
         # Check that voices contain expected information
         for voice in voices:
-            self.assertIn('name', voice)
-            self.assertIn('short_name', voice)
-            self.assertIn('gender', voice)
-            self.assertIn('locale', voice)
+            self.assertIn("name", voice)
+            self.assertIn("short_name", voice)
+            self.assertIn("gender", voice)
+            self.assertIn("locale", voice)
 
-    @patch('edge_tts.list_voices')
+    @patch("edge_tts.list_voices")
     def test_get_voices_by_language(self, mock_list_voices):
         """Test filtering voices by language."""
         mock_list_voices.return_value = self.mock_voices
 
         # First populate the voices cache
         import asyncio
+
         asyncio.run(self.provider.get_available_voices())
 
         # Test Chinese voices
@@ -125,8 +126,7 @@ class TestVoiceSwitching(unittest.TestCase):
         # Test setting valid voice
         result = self.provider.set_voice("zh-CN-XiaoxiaoNeural")
         self.assertTrue(result)
-        self.assertEqual(self.provider.get_current_voice(),
-                         "zh-CN-XiaoxiaoNeural")
+        self.assertEqual(self.provider.get_current_voice(), "zh-CN-XiaoxiaoNeural")
 
         # Test setting another valid voice
         result = self.provider.set_voice("en-US-AriaNeural")
@@ -139,7 +139,7 @@ class TestVoiceSwitching(unittest.TestCase):
         # Voice should remain unchanged
         self.assertEqual(self.provider.get_current_voice(), "en-US-AriaNeural")
 
-    @patch('edge_tts.Communicate')
+    @patch("edge_tts.Communicate")
     async def test_synthesize_with_different_voices(self, mock_communicate):
         """Test synthesizing text with different voices."""
         # Mock the communicate object
@@ -157,21 +157,23 @@ class TestVoiceSwitching(unittest.TestCase):
             voice="zh-TW-HsiaoChenNeural",
             rate="+0%",
             pitch="+0Hz",
-            volume="+0%"
+            volume="+0%",
         )
 
         # Test with specific voice
-        audio_data = await self.provider.synthesize(self.test_text, voice="zh-CN-XiaoxiaoNeural")
+        audio_data = await self.provider.synthesize(
+            self.test_text, voice="zh-CN-XiaoxiaoNeural"
+        )
         self.assertIsInstance(audio_data, bytes)
         mock_communicate.assert_called_with(
             text=self.test_text,
             voice="zh-CN-XiaoxiaoNeural",
             rate="+0%",
             pitch="+0Hz",
-            volume="+0%"
+            volume="+0%",
         )
 
-    @patch('edge_tts.Communicate')
+    @patch("edge_tts.Communicate")
     async def test_synthesize_with_custom_parameters(self, mock_communicate):
         """Test synthesizing with custom rate, pitch, and volume."""
         mock_comm_instance = AsyncMock()
@@ -186,7 +188,7 @@ class TestVoiceSwitching(unittest.TestCase):
             voice="zh-CN-XiaoxiaoNeural",
             rate="+20%",
             pitch="+5Hz",
-            volume="-10%"
+            volume="-10%",
         )
         self.assertIsInstance(audio_data, bytes)
         mock_communicate.assert_called_with(
@@ -194,7 +196,7 @@ class TestVoiceSwitching(unittest.TestCase):
             voice="zh-CN-XiaoxiaoNeural",
             rate="+20%",
             pitch="+5Hz",
-            volume="-10%"
+            volume="-10%",
         )
 
     def test_default_voice_is_female_chinese(self):
@@ -205,7 +207,7 @@ class TestVoiceSwitching(unittest.TestCase):
         # Verify it's in our default voices
         self.assertIn(current_voice, self.provider.DEFAULT_VOICES.values())
 
-    @patch('edge_tts.list_voices')
+    @patch("edge_tts.list_voices")
     async def test_get_female_chinese_voices(self, mock_list_voices):
         """Test getting female Chinese voices specifically."""
         mock_list_voices.return_value = self.mock_voices
@@ -214,14 +216,15 @@ class TestVoiceSwitching(unittest.TestCase):
 
         # Filter for female Chinese voices
         female_chinese_voices = [
-            voice for voice in voices
-            if voice['gender'] == 'Female' and voice['locale'].startswith('zh')
+            voice
+            for voice in voices
+            if voice["gender"] == "Female" and voice["locale"].startswith("zh")
         ]
 
         self.assertEqual(len(female_chinese_voices), 2)
 
         # Verify voice names
-        voice_names = [voice['short_name'] for voice in female_chinese_voices]
+        voice_names = [voice["short_name"] for voice in female_chinese_voices]
         self.assertIn("zh-TW-HsiaoChenNeural", voice_names)
         self.assertIn("zh-CN-XiaoxiaoNeural", voice_names)
 
@@ -257,10 +260,10 @@ class TestVoiceSwitchingIntegration(unittest.TestCase):
 
     def tearDown(self):
         """Clean up integration test fixtures."""
-        if hasattr(self, 'provider'):
+        if hasattr(self, "provider"):
             self.provider.stop_async_loop()
 
-    @patch('edge_tts.list_voices')
+    @patch("edge_tts.list_voices")
     async def test_full_voice_workflow(self, mock_list_voices):
         """Test complete workflow of voice selection and usage."""
         mock_list_voices.return_value = [
@@ -284,8 +287,8 @@ class TestVoiceSwitchingIntegration(unittest.TestCase):
         # Select a female Chinese voice
         female_chinese_voice = None
         for voice in voices:
-            if voice['gender'] == 'Female' and voice['locale'].startswith('zh'):
-                female_chinese_voice = voice['short_name']
+            if voice["gender"] == "Female" and voice["locale"].startswith("zh"):
+                female_chinese_voice = voice["short_name"]
                 break
 
         self.assertIsNotNone(female_chinese_voice)
@@ -322,8 +325,9 @@ def run_voice_switching_demo():
 
             # Show female Chinese voices
             female_chinese_voices = [
-                voice for voice in voices
-                if voice['gender'] == 'Female' and voice['locale'].startswith('zh')
+                voice
+                for voice in voices
+                if voice["gender"] == "Female" and voice["locale"].startswith("zh")
             ]
             print(f"Female Chinese voices: {len(female_chinese_voices)}")
             for voice in female_chinese_voices:
@@ -336,19 +340,19 @@ def run_voice_switching_demo():
 
             # Switch to different female Chinese voice if available
             if len(female_chinese_voices) > 1:
-                new_voice = female_chinese_voices[1]['short_name']
+                new_voice = female_chinese_voices[1]["short_name"]
                 print(f"Switching to: {new_voice}")
                 provider.set_voice(new_voice)
                 print(f"Current voice: {provider.get_current_voice()}")
 
             # Switch to English voice for comparison
             english_voices = [
-                voice for voice in voices
-                if voice['gender'] == 'Female' and
-                voice['locale'].startswith('en')
+                voice
+                for voice in voices
+                if voice["gender"] == "Female" and voice["locale"].startswith("en")
             ]
             if english_voices:
-                english_voice = english_voices[0]['short_name']
+                english_voice = english_voices[0]["short_name"]
                 print(f"Switching to English: {english_voice}")
                 provider.set_voice(english_voice)
                 print(f"Current voice: {provider.get_current_voice()}")
@@ -370,6 +374,5 @@ if __name__ == "__main__":
     unittest.main(verbosity=2, exit=False)
 
     # Run demo
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     run_voice_switching_demo()
-

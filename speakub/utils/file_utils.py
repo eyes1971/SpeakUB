@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 This module provides file-related utility functions for the EPUB reader.
@@ -77,4 +76,3 @@ if __name__ == "__main__":
         print(f"Cleaned up test directory: {test_dir}")
 
     print("File utils test complete.")
-

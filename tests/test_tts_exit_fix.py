@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Test script to verify TTS exit fix.
@@ -12,6 +9,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+
 import pytest
 
 from speakub.tts.engine import TTSEngine, TTSState
@@ -29,8 +27,7 @@ class MockTTSEngine(TTSEngine):
         self.playback_active = False
         self.stop_called = False
 
-    async def synthesize(self, text: str, voice: str = "default",
-                         **kwargs) -> bytes:
+    async def synthesize(self, text: str, voice: str = "default", **kwargs) -> bytes:
         # Simulate synthesis delay
         await asyncio.sleep(0.1)
         return b"mock_audio_data"
@@ -141,6 +138,3 @@ def test_tts_thread_management():
 
     assert not thread_active
     assert not thread.is_alive()
-
-
-

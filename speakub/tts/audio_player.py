@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Audio Player - Handles audio playback for TTS.
@@ -270,4 +269,3 @@ class AudioPlayer:
     def __del__(self):
         """Destructor."""
         self.cleanup()
-

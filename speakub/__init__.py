@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # SpeakUB - A modern terminal EPUB reader with TTS support.
 
@@ -38,4 +37,3 @@ __all__ = [
 
 if TTS_AVAILABLE:
     __all__.extend(["TTSEngine", "EdgeTTSProvider"])
-

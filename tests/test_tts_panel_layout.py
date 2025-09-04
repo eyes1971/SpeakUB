@@ -1,6 +1,3 @@
-
-
-
 #!/usr/bin/env python3
 """
 Test script to demonstrate TTS panel layout testing.
@@ -117,4 +114,3 @@ if __name__ == "__main__":
             print("\n❌ Layout test failed!")
     else:
         print("\n❌ Component test failed!")
-

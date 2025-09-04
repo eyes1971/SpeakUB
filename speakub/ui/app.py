@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Main SpeakUB Application - Textual UI
@@ -21,7 +20,6 @@ from speakub.core.chapter_manager import ChapterManager
 from speakub.core.content_renderer import ContentRenderer
 from speakub.core.epub_parser import EPUBParser
 from speakub.core.progress_tracker import ProgressTracker
-from speakub.utils.config import get_tts_config, save_tts_config, validate_tts_config
 from speakub.ui.actions import SpeakUBActions
 from speakub.ui.panel_titles import PanelTitle
 from speakub.ui.progress import ProgressManager
@@ -29,6 +27,7 @@ from speakub.ui.tts_integration import TTSIntegration
 from speakub.ui.ui_utils import UIUtils
 from speakub.ui.voice_selector_panel import VoiceSelectorPanel
 from speakub.ui.widgets.content_widget import ContentDisplay, ViewportContent
+from speakub.utils.config import get_tts_config, save_tts_config, validate_tts_config
 
 if TTS_AVAILABLE:
     try:
@@ -268,8 +267,7 @@ class EPUBReaderApp(App):
                     current_voice = self.tts_engine.get_current_voice()
 
                     if female_chinese_voices:
-                        voice_panel.update_voices(
-                            female_chinese_voices, current_voice)
+                        voice_panel.update_voices(female_chinese_voices, current_voice)
                     else:
                         self.notify(
                             "No female Chinese voices found. Displaying all available voices.",
@@ -311,10 +309,8 @@ class EPUBReaderApp(App):
             self.content_renderer = ContentRenderer(
                 content_width=self.ui_utils.calculate_content_width(), trace=self._debug
             )
-            self.chapter_manager = ChapterManager(
-                self.toc_data, trace=self._debug)
-            self.progress_tracker = ProgressTracker(
-                self.epub_path, trace=self._debug)
+            self.chapter_manager = ChapterManager(self.toc_data, trace=self._debug)
+            self.progress_tracker = ProgressTracker(self.epub_path, trace=self._debug)
 
             await self.ui_utils.update_toc_tree(self.toc_data)
             self.ui_utils.update_panel_titles()
@@ -334,8 +330,7 @@ class EPUBReaderApp(App):
         try:
             self.current_chapter = chapter
             html_content = self.epub_parser.read_chapter(chapter["src"])
-            self.current_chapter_soup = BeautifulSoup(
-                html_content, "html.parser")
+            self.current_chapter_soup = BeautifulSoup(html_content, "html.parser")
             content_lines = self.content_renderer.render_chapter(html_content)
             self.viewport_content = ViewportContent(
                 content_lines, self.current_viewport_height
@@ -344,8 +339,7 @@ class EPUBReaderApp(App):
             cursor_position = 0
             if cfi and self.current_chapter_soup:
                 try:
-                    cursor_position = self.progress_manager.get_line_from_cfi(
-                        cfi)
+                    cursor_position = self.progress_manager.get_line_from_cfi(cfi)
                 except (EPUBCFIError, ValueError) as e:
                     logger.warning(f"CFI resolution failed: {e}")
                     cursor_position = 0
@@ -358,12 +352,10 @@ class EPUBReaderApp(App):
             elif from_start:
                 self.viewport_content.jump_to_page(0)
             else:
-                page, cursor = divmod(
-                    cursor_position, self.current_viewport_height)
+                page, cursor = divmod(cursor_position, self.current_viewport_height)
                 self.viewport_content.jump_to_page(page)
                 lines = len(self.viewport_content.get_current_viewport_lines())
-                self.viewport_content.cursor_in_page = max(
-                    0, min(cursor, lines - 1))
+                self.viewport_content.cursor_in_page = max(0, min(cursor, lines - 1))
 
             self.ui_utils.update_content_display()
 
