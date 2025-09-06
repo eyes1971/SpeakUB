@@ -1,7 +1,7 @@
 """
 Content display widget for the EPUB reader.
 """
-
+import re
 from typing import Dict, List, Optional, Tuple
 
 from rich.text import Text
@@ -74,13 +74,36 @@ class ViewportContent:
                 self.line_to_paragraph_map[p_line_idx] = para_info
 
     def get_paragraph_text(self, para_info: dict) -> str:
+        # Step 1: This is the most important part of the original code,
+        # it builds the para_lines list from para_info.
+        # This is the part that was missing in your current version.
         para_lines = []
         for line_idx in para_info["lines"]:
             if line_idx < len(self.content_lines):
                 line_text = self.content_lines[line_idx].strip()
                 if line_text:
                     para_lines.append(line_text)
-        return " ".join(para_lines)
+
+        # If para_lines is empty, return an empty string directly to avoid errors.
+        if not para_lines:
+            return ""
+
+        # Step 2: This is the "perfect solution" logic I suggested before,
+        # but now it can safely handle the para_lines list that has been
+        # correctly created in the previous step.
+        result = ""
+        for i, line in enumerate(para_lines):
+            result += line
+            # If not the last line
+            if i < len(para_lines) - 1:
+                # Determine if a space needs to be added between lines
+                # (handling English word breaks)
+                # Rule: If the current line ends with an English letter and
+                # the next line starts with an English letter, add a space
+                if re.search(r'[a-zA-Z]$', line) and re.search(r'^[a-zA-Z]', para_lines[i+1]):
+                    result += " "
+
+        return result
 
     def _find_next_content_line(self, current_global_pos: int) -> Optional[int]:
         for content_line_idx in self.content_line_indices:
