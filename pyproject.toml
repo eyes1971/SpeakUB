@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "speakub"
-version = "1.0.0"
+version = "1.1.0"
 description = "A rich terminal EPUB reader with TTS support"
 authors = [
     {name = "Sam Weng", email = "eyes1971@gmail.com"}

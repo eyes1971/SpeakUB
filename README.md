@@ -16,6 +16,7 @@ A modern, feature-rich terminal EPUB reader with **Text-to-Speech** support, bui
 - 🖼️ **Image Support** - View embedded images (optional)
 - ⌨️ **Keyboard Shortcuts** - Efficient navigation with familiar keys
 - 🎛️ **TTS Controls** - Play, Pause, Stop with speed/volume control
+- 🗣️ **Chinese Pronunciation Corrections** - Optional pronunciation correction system
 
 ## 🚀 Installation
 
@@ -230,6 +231,89 @@ To clear all caches, delete the progress file:
 ```bash
 rm ~/.speakub_progress.json
 ```
+
+## 🗣️ Chinese Pronunciation Corrections
+
+SpeakUB supports optional pronunciation corrections for Chinese text. This feature allows you to customize how specific Chinese characters or words are pronounced by the TTS system.
+
+### Setting Up Corrections
+
+1. **Automatic Setup**: The first time you run SpeakUB, it will create a corrections file at `~/.config/speakub/corrections.json` with instructions and examples.
+
+2. **Manual Setup**: You can also create the file manually:
+```bash
+mkdir -p ~/.config/speakub
+touch ~/.config/speakub/corrections.json
+```
+
+### Corrections File Format
+
+The corrections file is a JSON object where each key is the original text and the value is the corrected pronunciation:
+
+```json
+{
+  "_comment": "Chinese Pronunciation Corrections Configuration",
+  "_instructions": "Add your correction rules below in format: 'original': 'corrected'",
+  "_examples": {
+    "生長": "生掌",
+    "長": "常"
+  },
+  "生長": "生掌",
+  "長": "常",
+  "银行": "yínháng",
+  "给予": "jǐyǔ"
+}
+```
+
+### How It Works
+
+- **Keys starting with `_`**: These are treated as comments and instructions, not correction rules
+- **Regular keys**: These are the actual correction mappings
+- **Automatic filtering**: The system automatically filters out instruction keys when loading corrections
+- **Optional feature**: If the corrections file doesn't exist, SpeakUB works normally without corrections
+
+### Common Use Cases
+
+- **Polyphonic characters**: Characters that can be pronounced differently in different contexts
+- **Proper nouns**: Names, places, or terms that need specific pronunciation
+- **Technical terms**: Specialized vocabulary that needs consistent pronunciation
+- **Regional variations**: Different pronunciation preferences
+
+### Examples
+
+```json
+{
+  "行": "xíng",        // 行走 (walking)
+  "银行": "yínháng",   // 银行 (bank)
+  "银行家": "yínhángjiā", // 银行家 (banker)
+  "长": "cháng",       // 长度 (length)
+  "长江": "chángjiāng" // 长江 (Yangtze River)
+}
+```
+
+### Tips
+
+- Use Pinyin with tone marks for best results
+- Test corrections with short text first
+- The corrections are applied before TTS processing
+- You can have multiple corrections for the same character in different contexts
+
+## 📋 Version History
+
+### Version 1.1.0 (Latest)
+- ✨ **New Feature**: Added Chinese pronunciation corrections system
+- 🔧 **Enhancement**: Improved content widget with better text processing
+- 🐛 **Bug Fix**: Fixed Flake8 linting issues
+- 📚 **Documentation**: Updated README with corrections usage guide
+- 🏗️ **Build**: Updated build system and version management
+
+### Version 1.0.0
+- 🎉 Initial release with full EPUB reading capabilities
+- 🔊 Text-to-Speech support with Microsoft Edge-TTS
+- 🎨 Rich terminal UI with Textual framework
+- 📑 Smart table of contents navigation
+- 💾 Automatic progress tracking
+- 🎛️ Comprehensive TTS controls
 
 ## 🔧 Development
 
