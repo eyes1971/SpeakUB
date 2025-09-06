@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-09-06
+
+### Added
+- **Chinese Pronunciation Corrections**: New optional feature for customizing Chinese character pronunciation in TTS
+- Automatic creation of corrections configuration file with instructions and examples
+- Smart filtering of instruction keys (starting with `_`) in corrections file
+- Enhanced content widget with improved text processing and English word break handling
+- Comprehensive documentation for pronunciation corrections feature
+
+### Changed
+- Updated content widget `get_paragraph_text` method with better text concatenation logic
+- Improved error handling for pronunciation corrections loading
+- Enhanced build system with updated version management
+
+### Fixed
+- Fixed Flake8 linting issues in content widget
+- Resolved line length violations in code comments
+- Improved code formatting and style consistency
+
+### Technical Improvements
+- Added `load_pronunciation_corrections()` and `save_pronunciation_corrections()` functions to config module
+- Implemented automatic corrections file generation with user-friendly instructions
+- Enhanced text processing with regex-based word boundary detection
+- Updated build configuration for better package management
+
+### Documentation
+- Added detailed Chinese pronunciation corrections usage guide to README
+- Included corrections.json file format specification
+- Added version history section with changelog
+- Updated feature list to include pronunciation corrections
+
 ## [1.0.0] - 2025-08-20
 
 ### Added
@@ -63,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Development Notes
 
 ### Version History
+- **1.1.0**: Added Chinese pronunciation corrections feature
 - **1.0.0**: Initial stable release
 - **0.x.x**: Development versions (internal)
 
