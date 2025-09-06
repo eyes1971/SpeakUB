@@ -102,18 +102,20 @@ def detect_hardware_profile() -> str:
 
         # Get CPU frequency if available
         try:
-            cpu_freq = psutil.cpu_freq().max if psutil.cpu_freq() else 0
-        except:
+            cpu_freq_info = psutil.cpu_freq()
+            cpu_freq = cpu_freq_info.max if cpu_freq_info else 0
+        except Exception:
             cpu_freq = 0
 
-        logger.debug(
-            f"Hardware detection: {cpu_count} cores, {memory_gb:.1f}GB RAM, {cpu_freq:.0f}MHz CPU"
-        )
+        logger.debug(f"Hardware detection: {cpu_count} cores, "
+                     f"{memory_gb:.1f}GB RAM, {cpu_freq:.0f}MHz CPU")
 
         # Classification logic
-        if memory_gb <= 4 or cpu_count <= 2:
+        if (memory_gb is not None and memory_gb <= 4) or \
+           (cpu_count is not None and cpu_count <= 2):
             return "low_end"
-        elif memory_gb <= 8 or cpu_count <= 4:
+        elif (memory_gb is not None and memory_gb <= 8) or \
+             (cpu_count is not None and cpu_count <= 4):
             return "mid_range"
         else:
             return "high_end"
@@ -282,6 +284,79 @@ def validate_tts_config(tts_config: Dict[str, Any]) -> Dict[str, Any]:
     validated["smooth_mode"] = bool(tts_config.get("smooth_mode", False))
 
     return validated
+
+
+# Define the path for the pronunciation corrections file
+CORRECTIONS_FILE = os.path.join(CONFIG_DIR, "corrections.json")
+
+
+def save_pronunciation_corrections(corrections: Dict[str, str]) -> None:
+    """
+    Save pronunciation corrections to JSON file.
+
+    Args:
+        corrections: Corrections dictionary to save
+    """
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+
+        # If corrections is empty, create file with instructions and examples
+        if not corrections:
+            instructions_content = {
+                "_comment": "Chinese Pronunciation Corrections Configuration",
+                "_instructions": "Add your correction rules below in format: "
+                                 "'original': 'corrected'",
+                "_examples": {
+                    "生長": "生掌",
+                    "長": "常"
+                }
+            }
+            with open(CORRECTIONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(instructions_content, f, indent=4, ensure_ascii=False)
+        else:
+            with open(CORRECTIONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(corrections, f, indent=4, ensure_ascii=False)
+
+        logger.debug(f"Pronunciation corrections saved to {CORRECTIONS_FILE}")
+    except IOError as e:
+        logger.error(f"Error saving pronunciation corrections file: {e}")
+
+
+def load_pronunciation_corrections() -> Dict[str, str]:
+    """
+    Load pronunciation corrections from external JSON file.
+    The file should be a JSON object (dictionary) with "original": "correction" format.
+    If the file doesn't exist, creates an empty one for user customization.
+
+    Returns:
+        Dict[str, str]: Corrections dictionary.
+    """
+    if not os.path.exists(CORRECTIONS_FILE):
+        logger.debug("Corrections file not found. Skipping pronunciation corrections.")
+        return {}
+
+    try:
+        with open(CORRECTIONS_FILE, "r", encoding="utf-8") as f:
+            corrections = json.load(f)
+            if not isinstance(corrections, dict):
+                logger.warning(
+                    f"'{CORRECTIONS_FILE}' root element is not a JSON object (dict), ignored.")
+                return {}
+
+            # Validate content is string: string, exclude instruction keys
+            validated_corrections = {
+                k: v for k, v in corrections.items()
+                if isinstance(k, str) and isinstance(v, str) and not k.startswith('_')
+            }
+
+            logger.debug("Successfully loaded "
+                         f"{len(validated_corrections)} pronunciation correction "
+                         f"rules from '{CORRECTIONS_FILE}'.")
+            return validated_corrections
+
+    except (IOError, json.JSONDecodeError) as e:
+        logger.error(f"Error reading or parsing '{CORRECTIONS_FILE}': {e}")
+        return {}
 
 
 # Example usage (for testing)

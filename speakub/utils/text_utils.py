@@ -3,10 +3,21 @@
 Text processing utilities.
 """
 
+import logging
+from typing import Dict, List
+
 import re
 from typing import Optional
 
+from speakub.utils.config import load_pronunciation_corrections
 from wcwidth import wcswidth
+
+# Load user-defined correction dictionary
+_corrections_map: Dict[str, str] = load_pronunciation_corrections()
+
+# Core logic: Pre-process sorted correction keys at module load time
+# Sort keys by length from longest to shortest
+_sorted_correction_keys = sorted(_corrections_map.keys(), key=len, reverse=True)
 
 
 def trace_log(message: str, enabled: bool) -> None:
@@ -335,3 +346,22 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
         "words_per_sentence": float(round(words_per_sentence, 1)),
         "complexity": complexity,
     }
+
+
+def correct_chinese_pronunciation(text: str) -> str:
+    """
+    Correct Chinese pronunciation using external configuration file
+    with "longest match first" principle and support for both
+    traditional and simplified Chinese characters.
+    """
+    if not text or not _sorted_correction_keys:
+        return text
+
+    # Apply corrections in order of longest to shortest keys
+    for original_word in _sorted_correction_keys:
+        # Check if the word exists in text
+        if original_word in text:
+            replacement = _corrections_map[original_word]
+            text = text.replace(original_word, replacement)
+
+    return text

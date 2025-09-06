@@ -8,6 +8,7 @@ import socket
 import threading
 import time
 from typing import TYPE_CHECKING, Optional, Tuple, Union
+from speakub.utils.text_utils import correct_chinese_pronunciation
 
 from speakub import TTS_AVAILABLE
 
@@ -210,10 +211,13 @@ class TTSIntegration:
         if not self.app.tts_engine:
             return
         try:
+            # Apply Chinese pronunciation corrections before TTS
+            corrected_text = correct_chinese_pronunciation(text)
+
             rate, volume = f"{self.app.tts_rate:+}%", f"{self.app.tts_volume - 100:+}%"
             kwargs = {"rate": rate, "volume": volume, "pitch": self.app.tts_pitch}
             if hasattr(self.app.tts_engine, "speak_text_sync"):
-                self.app.tts_engine.speak_text_sync(text, **kwargs)
+                self.app.tts_engine.speak_text_sync(corrected_text, **kwargs)
         except Exception as e:
             raise e
 
@@ -643,9 +647,11 @@ class TTSIntegration:
                     try:
                         rate_str = f"{self.app.tts_rate:+}%"
                         volume_str = f"{self.app.tts_volume - 100:+}%"
+                        corrected_text_to_synthesize = correct_chinese_pronunciation(
+                            text_to_synthesize)
                         future = asyncio.run_coroutine_threadsafe(
                             self.app.tts_engine.synthesize(
-                                text_to_synthesize,
+                                corrected_text_to_synthesize,
                                 rate=rate_str,
                                 volume=volume_str,
                                 pitch=self.app.tts_pitch,
