@@ -472,15 +472,42 @@ class EPUBParser:
             if raw_chapters:
                 toc_source = "nav.xhtml"
                 logger.debug(f"--- Parsing TOC from {toc_source} ---")
+                # Check if we need to fall back to NCX for better structure
+                has_groups = any(chap.get("type") ==
+                                 "group_header" for chap in raw_chapters)
+                if not has_groups and ncx:
+                    # Try NCX if nav.xhtml is flat
+                    nodes = self._parse_ncx_document_robust(ncx, basedir)
+                    if nodes:
+                        toc_source = "toc.ncx"
+                        logger.debug(
+                            f"--- nav.xhtml is flat, falling back to {toc_source} ---")
+                        return {
+                            "book_title": book_title,
+                            "nodes": nodes,
+                            "spine_order": spine_order,
+                            "toc_source": toc_source,
+                            "raw_chapters": [],
+                        }
 
         # 2. Try EPUB2 NCX document (toc.ncx)
         if not raw_chapters and ncx:
-            raw_chapters = self._parse_ncx_document_robust(ncx, basedir)
-            if raw_chapters:
+            nodes = self._parse_ncx_document_robust(ncx, basedir)
+            if nodes:
                 toc_source = "toc.ncx"
                 logger.debug(
                     f"--- nav.xhtml parsing failed or empty, trying {toc_source} ---"
                 )
+                # For NCX, we get nested nodes directly, so we can skip the grouping logic
+                logger.debug(
+                    f"--- TOC Build Process Finished. Final source: {toc_source} ---")
+                return {
+                    "book_title": book_title,
+                    "nodes": nodes,
+                    "spine_order": spine_order,
+                    "toc_source": toc_source,
+                    "raw_chapters": [],  # Not used for nested structure
+                }
 
         # 3. Fallback to spine order with filenames
         if not raw_chapters and spine_order:
@@ -641,79 +668,191 @@ class EPUBParser:
                 logger.debug(f"Failed to parse nav document {nav_href}: {e}")
             return []
 
-    def _parse_ncx_document_robust(
-        self, ncx_href: str, basedir: str
-    ) -> List[Dict[str, str]]:
-        """Parse EPUB2 NCX document using the robust logic from epub-tts.py"""
+    def _parse_ncx_document_robust(self, ncx_href: str, basedir: str) -> List[Dict[str, Any]]:
+        """
+        Parse EPUB2 NCX document with proper hierarchical structure.
+        Return nested node structure with children attributes directly.
+        """
         try:
             ncx_content = self.read_chapter(ncx_href)
+
             if HAS_BS4:
                 ncx_soup = BeautifulSoup(ncx_content, "xml")
-                nav_points = ncx_soup.find_all("navPoint")
-            else:
-                root = ET.fromstring(ncx_content)
-                nav_points = root.findall(
-                    ".//{http://www.daisy.org/z3986/2005/ncx/}navPoint"
-                )
+                # Only find root-level navPoint elements (direct children of navMap)
+                nav_map = ncx_soup.find("navMap")
+                if not nav_map:
+                    return []
 
-            logger.debug(f"Found {len(nav_points)} <navPoint> items in toc.ncx")
-            raw_chapters = []
+                root_nav_points = nav_map.find_all("navPoint", recursive=False)
+                logger.debug(
+                    f"Found {len(root_nav_points)} root <navPoint> items in toc.ncx")
 
-            for i, navPoint in enumerate(nav_points):
-                if HAS_BS4:
-                    content = navPoint.find("content")
-                    navLabel = navPoint.find("navLabel")
-                    if content and navLabel and content.get("src"):
-                        full_path = os.path.normpath(
-                            os.path.join(basedir, content["src"])
-                        ).split("#")[0]
-                        title = " ".join(navLabel.text.strip().split())
+                # Recursive function to process each navPoint and its children, returning nested structure
+                def parse_nav_point_recursive(nav_point, depth=0):
+                    """Recursively parse navPoint, returning nested node structure"""
+                    content_tag = nav_point.find("content", recursive=False)
+                    nav_label = nav_point.find("navLabel", recursive=False)
+
+                    if not content_tag or not nav_label:
+                        return None
+
+                    full_path = os.path.normpath(
+                        os.path.join(basedir, content_tag.get("src", ""))
+                    ).split("#")[0]
+                    title = " ".join(nav_label.text.strip().split())
+
+                    # Check if there are child nodes
+                    child_nav_points = nav_point.find_all("navPoint", recursive=False)
+
+                    if child_nav_points:
+                        # This is a group node (has children)
                         logger.debug(
-                            f"  item {i}: Found chapter: '{title}' -> '{full_path}'"
-                        )
-                        raw_chapters.append(
-                            {
-                                "type": "chapter",
-                                "title": title,
-                                "src": full_path,
-                                "normalized_src": normalize_src_for_matching(full_path),
-                            }
-                        )
-                else:
-                    nav_label = navPoint.find(
-                        ".//{http://www.daisy.org/z3986/2005/ncx/}text"
-                    )
+                            f"  {'  ' * depth}Group: '{title}' with {len(child_nav_points)} children")
+                        children = []
+                        for child in child_nav_points:
+                            child_node = parse_nav_point_recursive(child, depth + 1)
+                            if child_node:
+                                children.append(child_node)
+
+                        return {
+                            "type": "group",
+                            "title": title,
+                            "src": full_path,
+                            "expanded": False,
+                            "children": children,
+                        }
+                    else:
+                        # This is a leaf node (chapter)
+                        logger.debug(
+                            f"  {'  ' * depth}Chapter: '{title}' -> '{full_path}'")
+                        return {
+                            "type": "chapter",
+                            "title": title,
+                            "src": full_path,
+                        }
+
+                # Start recursive parsing from root level, return nested results
+                nodes = []
+                for nav_point in root_nav_points:
+                    node = parse_nav_point_recursive(nav_point, depth=0)
+                    if node:
+                        nodes.append(node)
+
+                return nodes
+
+            else:
+                # ElementTree processing logic also needs similar modifications
+                root = ET.fromstring(ncx_content)
+                nav_map = root.find(".//{http://www.daisy.org/z3986/2005/ncx/}navMap")
+                if nav_map is None:
+                    nav_map = root.find(".//navMap")
+
+                if nav_map is None:
+                    return []
+
+                # Only find direct child nodes
+                root_nav_points = []
+                for child in nav_map:
+                    if child.tag.endswith("navPoint"):
+                        root_nav_points.append(child)
+
+                logger.debug(
+                    f"Found {len(root_nav_points)} root <navPoint> items in toc.ncx")
+
+                def parse_nav_point_et_recursive(nav_point, depth=0):
+                    """Recursively parse navPoint (ElementTree version), return nested structure"""
+                    nav_label = nav_point.find(
+                        ".//{http://www.daisy.org/z3986/2005/ncx/}text")
                     if nav_label is None:
-                        nav_label = navPoint.find(".//text")
+                        nav_label = nav_point.find(".//text")
 
-                    title = (
-                        nav_label.text.strip()
-                        if nav_label is not None and nav_label.text
-                        else ""
-                    )
+                    title = nav_label.text.strip() if nav_label is not None and nav_label.text else ""
 
-                    content = navPoint.find(
-                        "{http://www.daisy.org/z3986/2005/ncx/}content"
-                    )
+                    content = nav_point.find(
+                        "{http://www.daisy.org/z3986/2005/ncx/}content")
                     if content is None:
-                        content = navPoint.find(".//content")
+                        content = nav_point.find(".//content")
 
                     href = content.attrib.get("src", "") if content is not None else ""
 
-                    if title and href:
-                        full_path = os.path.normpath(os.path.join(basedir, href)).split(
-                            "#"
-                        )[0]
-                        raw_chapters.append(
-                            {
-                                "type": "chapter",
-                                "title": title,
-                                "src": full_path,
-                                "normalized_src": normalize_src_for_matching(full_path),
-                            }
-                        )
+                    if not title or not href:
+                        return None
 
-            return raw_chapters
+                    full_path = os.path.normpath(
+                        os.path.join(basedir, href)).split("#")[0]
+
+                    # Enhanced logic for malformed XML structures
+                    # For ElementTree fallback, we need to handle cases where XML nesting is incorrect
+                    # We'll use a simpler approach: check if there are any navPoints immediately following
+                    # this one in the parent's children list
+
+                    # Get the parent element
+                    parent = nav_point
+                    while parent is not None and parent.tag != "navMap":
+                        parent = parent if hasattr(parent, 'getparent') else None
+                        if hasattr(parent, 'getparent'):
+                            parent = parent.getparent()
+                        else:
+                            break
+
+                    if parent is not None and parent.tag == "navMap":
+                        # Find all direct children of navMap
+                        siblings = [
+                            child for child in parent if child.tag.endswith("navPoint")]
+
+                        # Find our position
+                        try:
+                            our_index = siblings.index(nav_point)
+                            # Look for the next sibling that could be a child
+                            # In malformed XML, children might appear as siblings
+                            child_nav_points = []
+                            if our_index + 1 < len(siblings):
+                                next_sibling = siblings[our_index + 1]
+                                # Check if it has a higher playOrder (indicating it might be a child)
+                                our_po = int(nav_point.attrib.get("playOrder", "0"))
+                                next_po = int(next_sibling.attrib.get("playOrder", "0"))
+                                if next_po > our_po:
+                                    child_nav_points = [next_sibling]
+                        except ValueError:
+                            child_nav_points = []
+                    else:
+                        child_nav_points = []
+
+                    if child_nav_points:
+                        # Group node
+                        logger.debug(
+                            f"  {'  ' * depth}Group: '{title}' with {len(child_nav_points)} children")
+                        children = []
+                        for child in child_nav_points:
+                            child_node = parse_nav_point_et_recursive(child, depth + 1)
+                            if child_node:
+                                children.append(child_node)
+
+                        return {
+                            "type": "group",
+                            "title": title,
+                            "src": full_path,
+                            "expanded": False,
+                            "children": children,
+                        }
+                    else:
+                        # Chapter node
+                        logger.debug(
+                            f"  {'  ' * depth}Chapter: '{title}' -> '{full_path}'")
+                        return {
+                            "type": "chapter",
+                            "title": title,
+                            "src": full_path,
+                        }
+
+                nodes = []
+                for nav_point in root_nav_points:
+                    node = parse_nav_point_et_recursive(nav_point, depth=0)
+                    if node:
+                        nodes.append(node)
+
+                return nodes
+
         except Exception as e:
             if self.trace:
                 logger.debug(f"Failed to parse NCX document {ncx_href}: {e}")

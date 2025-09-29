@@ -20,18 +20,24 @@ class TOCWidget(Tree):
         """Update the TOC tree with new data."""
         self.toc_data = toc_data
         self.clear()
-        self.label = toc_data.get("book_title", "Book")
+        # Set the root label to the book title
+        self.root.label = toc_data.get("book_title", "Book")
+
+        # Build the TOC tree structure recursively
+        def add_node(parent, node_data):
+            """Recursively add nodes to the tree."""
+            if node_data.get("type") == "group":
+                # Create a group node
+                group_node = parent.add(node_data.get("title", "Group"), expand=False)
+                for child in node_data.get("children", []):
+                    add_node(group_node, child)
+            else:
+                # Create a leaf node
+                parent.add_leaf(node_data.get("title", "Item"), data=node_data)
 
         # Build the TOC tree structure
         for node in toc_data.get("nodes", []):
-            if node.get("type") == "group":
-                # Create a group node
-                group_node = self.root.add(node.get("title", "Group"), expand=False)
-                for child in node.get("children", []):
-                    group_node.add_leaf(child.get("title", "Item"), data=child)
-            else:
-                # Create a regular node
-                self.root.add_leaf(node.get("title", "Item"), data=node)
+            add_node(self.root, node)
 
         self.root.expand()
 

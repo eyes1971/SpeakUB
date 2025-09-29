@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-09-30
+
+### Fixed
+- **EPUB Table of Contents Hierarchical Parsing**: Fixed TOC parsing to properly handle nested structures in EPUB files. When nav.xhtml contains only flat chapter lists, the parser now automatically falls back to toc.ncx for better hierarchical organization. This resolves issues where books with complex chapter hierarchies (like multi-part novels) were displayed as flat lists instead of collapsible nested directories.
+
+### Technical Improvements
+- Enhanced EPUB parser with intelligent fallback logic between nav.xhtml and toc.ncx
+- Improved XML structure detection for malformed EPUB files
+- Better handling of EPUB2/EPUB3 TOC format differences
+- Added debug logging for TOC source selection
+
 ## [1.1.0] - 2025-09-06
 
 ### Added
@@ -82,6 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **NCX Table of Contents Hierarchical Parsing**: Fixed EPUB2 NCX parsing to properly handle nested navPoint structures instead of flattening all entries. Now correctly displays collapsible multi-level directories in the UI for books with complex chapter hierarchies.
+
 ### Planned
 - Bug fixes and performance improvements
 - Additional voice options
@@ -94,6 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Development Notes
 
 ### Version History
+- **1.1.1**: Fixed EPUB table of contents hierarchical parsing
 - **1.1.0**: Added Chinese pronunciation corrections feature
 - **1.0.0**: Initial stable release
 - **0.x.x**: Development versions (internal)
