@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 CPU Optimization Test Script for SpeakUB
@@ -9,7 +16,6 @@ import os
 import signal
 import subprocess
 import sys
-import threading
 import time
 from pathlib import Path
 
@@ -88,7 +94,7 @@ class CPUOptimizerTester:
             # Add many paragraphs to create substantial content
             for i in range(100):
                 chapter_content += (
-                    f"<p>This is paragraph {i+1}. "
+                    f"<p>This is paragraph {i + 1}. "
                     + " ".join([f"word{j}" for j in range(50)])
                     + "</p>\n"
                 )
@@ -135,7 +141,7 @@ class CPUOptimizerTester:
                 preexec_fn=os.setsid,  # Create new process group
             )
             return True
-        except Exception as e:
+        except Exception:
             # Failed to start reader: {e}
             return False
 
@@ -146,10 +152,10 @@ class CPUOptimizerTester:
                 # Send SIGTERM to process group
                 os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
                 self.process.wait(timeout=5)
-            except:
+            except Exception:
                 try:
                     self.process.kill()
-                except:
+                except Exception:
                     pass
             self.process = None
 
@@ -273,21 +279,19 @@ def main():
         # "-" * 30
 
         if "error" not in results["idle_test"]:
-            idle = results["idle_test"]
             # Idle CPU Usage:
-            # CPU Average: {idle['cpu_avg']:.2f}%
-            # CPU Max: {idle['cpu_max']:.2f}%
-            # CPU Min: {idle['cpu_min']:.2f}%
-            # Memory Average: {idle['memory_avg']:.1f} MB
+            # CPU Average: {results["idle_test"]['cpu_avg']:.2f}%
+            # CPU Max: {results["idle_test"]['cpu_max']:.2f}%
+            # CPU Min: {results["idle_test"]['cpu_min']:.2f}%
+            # Memory Average: {results["idle_test"]['memory_avg']:.1f} MB
             pass
 
         if "error" not in results["active_test"]:
-            active = results["active_test"]
             # Active CPU Usage:
-            # CPU Average: {active['cpu_avg']:.2f}%
-            # CPU Max: {active['cpu_max']:.2f}%
-            # CPU Min: {active['cpu_min']:.2f}%
-            # Memory Average: {active['memory_avg']:.1f} MB
+            # CPU Average: {results["active_test"]['cpu_avg']:.2f}%
+            # CPU Max: {results["active_test"]['cpu_max']:.2f}%
+            # CPU Min: {results["active_test"]['cpu_min']:.2f}%
+            # Memory Average: {results["active_test"]['memory_avg']:.1f} MB
             pass
 
         # Optimizations Implemented:
@@ -335,7 +339,7 @@ def main():
     except KeyboardInterrupt:
         # Test interrupted by user
         pass
-    except Exception as e:
+    except Exception:
         # Test failed: {e}
         pass
     finally:

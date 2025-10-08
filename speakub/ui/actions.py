@@ -122,7 +122,9 @@ class SpeakUBActions:
         if at_chapter_start:
             prev_chapter = self.find_prev_chapter()
             if prev_chapter:
-                self.app.run_worker(self.app._load_chapter(prev_chapter, from_end=True))
+                self.app.run_worker(
+                    self.app.epub_manager.load_chapter(prev_chapter, from_end=True)
+                )
         self.app._update_content_display()
 
     def action_content_down(self) -> None:
@@ -137,7 +139,7 @@ class SpeakUBActions:
             next_chapter = self.find_next_chapter()
             if next_chapter:
                 self.app.run_worker(
-                    self.app._load_chapter(next_chapter, from_start=True)
+                    self.app.epub_manager.load_chapter(next_chapter, from_start=True)
                 )
         self.app._update_content_display()
 
@@ -152,7 +154,9 @@ class SpeakUBActions:
         if at_chapter_start:
             prev_chapter = self.find_prev_chapter()
             if prev_chapter:
-                self.app.run_worker(self.app._load_chapter(prev_chapter, from_end=True))
+                self.app.run_worker(
+                    self.app.epub_manager.load_chapter(prev_chapter, from_end=True)
+                )
         self.app._update_content_display()
 
     def action_content_page_down(self) -> None:
@@ -167,7 +171,7 @@ class SpeakUBActions:
             next_chapter = self.find_next_chapter()
             if next_chapter:
                 self.app.run_worker(
-                    self.app._load_chapter(next_chapter, from_start=True)
+                    self.app.epub_manager.load_chapter(next_chapter, from_start=True)
                 )
         self.app._update_content_display()
 
@@ -202,12 +206,8 @@ class SpeakUBActions:
 
     def find_next_chapter(self) -> Optional[dict]:
         """Find the next chapter."""
-        if not self.app.current_chapter or not self.app.chapter_manager:
-            return None
-        return self.app.chapter_manager.get_next_chapter(self.app.current_chapter)
+        return self.app.epub_manager.get_next_chapter()
 
     def find_prev_chapter(self) -> Optional[dict]:
         """Find the previous chapter."""
-        if not self.app.current_chapter or not self.app.chapter_manager:
-            return None
-        return self.app.chapter_manager.get_previous_chapter(self.app.current_chapter)
+        return self.app.epub_manager.get_previous_chapter()

@@ -4,13 +4,76 @@ Content Renderer - Converts HTML content to text for display.
 """
 
 import re
+import time
 from collections import OrderedDict
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import html2text
+import psutil
 from bs4 import BeautifulSoup
 
 from speakub.utils.text_utils import str_display_width, trace_log
+
+
+class AdaptiveCache:
+    """Adaptive cache manager with TTL and statistics support."""
+
+    def __init__(self, max_size: int, ttl: int = 300):
+        """
+        Initialize adaptive cache.
+
+        Args:
+            max_size: Maximum cache size
+            ttl: Cache time-to-live in seconds
+        """
+        self._cache: OrderedDict = OrderedDict()
+        self._max_size = max_size
+        self._ttl = ttl
+        self._access_times: Dict[str, float] = {}
+        self._hit_count = 0
+        self._miss_count = 0
+
+    def get(self, key):
+        """Get cache item and update access time."""
+        if key in self._cache:
+            # Check if expired
+            if time.time() - self._access_times[key] > self._ttl:
+                del self._cache[key]
+                del self._access_times[key]
+                self._miss_count += 1
+                return None
+
+            # Update LRU order
+            self._cache.move_to_end(key)
+            self._access_times[key] = time.time()
+            self._hit_count += 1
+            return self._cache[key]
+
+        self._miss_count += 1
+        return None
+
+    def set(self, key, value):
+        """Set cache item."""
+        if len(self._cache) >= self._max_size:
+            # Remove oldest item
+            oldest_key = next(iter(self._cache))
+            del self._cache[oldest_key]
+            del self._access_times[oldest_key]
+
+        self._cache[key] = value
+        self._access_times[key] = time.time()
+
+    def get_stats(self) -> Dict[str, float]:
+        """Get cache statistics."""
+        total = self._hit_count + self._miss_count
+        hit_rate = self._hit_count / total if total > 0 else 0
+        return {
+            "size": len(self._cache),
+            "max_size": self._max_size,
+            "hit_rate": hit_rate,
+            "hits": self._hit_count,
+            "misses": self._miss_count,
+        }
 
 
 class EPUBTextRenderer(html2text.HTML2Text):
@@ -62,16 +125,42 @@ class ContentRenderer:
         """
         self.content_width = content_width
         self.trace = trace
-        # LRU cache for renderers
-        self._renderer_cache: OrderedDict[int, EPUBTextRenderer] = OrderedDict()
+
+        # Use adaptive cache instead of original OrderedDict
+        base_size = self._get_adaptive_cache_size()
+        self._renderer_cache = AdaptiveCache(
+            max_size=base_size, ttl=300  # 5 minutes TTL
+        )
+
+    def _get_adaptive_cache_size(self) -> int:
+        """
+        Get adaptive cache size based on system memory.
+
+        Returns:
+            Recommended cache size
+        """
+        try:
+            mem = psutil.virtual_memory()
+            mem_gb = mem.total / (1024**3)
+
+            # Adaptive sizing based on available memory
+            if mem_gb < 4:
+                return 5  # Low memory: minimal cache
+            elif mem_gb < 8:
+                return 10  # Medium memory
+            else:
+                return 20  # High memory: full cache
+        except Exception:
+            # Fallback to default if psutil fails
+            return 20
 
     def _get_renderer(self, width: int) -> EPUBTextRenderer:
-        """Get or create a renderer for the specified width."""
-        if width not in self._renderer_cache:
+        """Get or create a renderer for the specified width from adaptive cache."""
+        renderer = self._renderer_cache.get(width)
+        if renderer is None:
             renderer = EPUBTextRenderer()
-            # Don't set body_width here since we disabled automatic wrapping
-            self._renderer_cache[width] = renderer
-        return self._renderer_cache[width]
+            self._renderer_cache.set(width, renderer)
+        return renderer
 
     def render_chapter(
         self, html_content: str, width: Optional[int] = None
@@ -315,7 +404,14 @@ class ContentRenderer:
             "estimated_reading_minutes": round(estimated_minutes, 1),
         }
 
+    def get_cache_stats(self) -> Dict[str, float]:
+        """Get cache statistics for monitoring."""
+        return self._renderer_cache.get_stats()
+
     def update_width(self, new_width: int) -> None:
         """Update the content width and clear cache."""
+        if self.content_width == new_width:
+            return
         self.content_width = max(20, new_width)
-        self._renderer_cache.clear()  # Clear cache to force re-rendering
+        # No need to clear cache explicitly. The next call to render_chapter
+        # will use the new width and _get_renderer will handle it.

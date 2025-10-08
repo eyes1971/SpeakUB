@@ -1,18 +1,32 @@
 """
 Content display widget for the EPUB reader.
 """
-import re
+
 from typing import Dict, List, Optional, Tuple
 
 from rich.text import Text
 from textual.binding import Binding
 from textual.widgets import Static
 
-from speakub.utils.text_utils import word_wrap
-
 
 class ViewportContent:
     """Manages viewport-based content structure with dynamic sizing and logical line navigation."""
+
+    __slots__ = (
+        "content_lines",
+        "viewport_height",
+        "total_lines",
+        "total_pages",
+        "current_page",
+        "cursor_in_page",
+        "content_line_indices",
+        "line_to_content_index",
+        "total_content_lines",
+        "line_to_paragraph_map",
+        "paragraphs",
+        "logical_lines",
+        "line_to_logical",
+    )
 
     def __init__(self, content_lines: List[str], viewport_height: int = 25):
         self.content_lines = content_lines
@@ -100,7 +114,117 @@ class ViewportContent:
                 # (handling English word breaks)
                 # Rule: If the current line ends with an English letter and
                 # the next line starts with an English letter, add a space
-                if re.search(r'[a-zA-Z]$', line) and re.search(r'^[a-zA-Z]', para_lines[i+1]):
+                if line.endswith(
+                    (
+                        "a",
+                        "b",
+                        "c",
+                        "d",
+                        "e",
+                        "f",
+                        "g",
+                        "h",
+                        "i",
+                        "j",
+                        "k",
+                        "l",
+                        "m",
+                        "n",
+                        "o",
+                        "p",
+                        "q",
+                        "r",
+                        "s",
+                        "t",
+                        "u",
+                        "v",
+                        "w",
+                        "x",
+                        "y",
+                        "z",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G",
+                        "H",
+                        "I",
+                        "J",
+                        "K",
+                        "L",
+                        "M",
+                        "N",
+                        "O",
+                        "P",
+                        "Q",
+                        "R",
+                        "S",
+                        "T",
+                        "U",
+                        "V",
+                        "W",
+                        "X",
+                        "Y",
+                        "Z",
+                    )
+                ) and para_lines[i + 1].startswith(
+                    (
+                        "a",
+                        "b",
+                        "c",
+                        "d",
+                        "e",
+                        "f",
+                        "g",
+                        "h",
+                        "i",
+                        "j",
+                        "k",
+                        "l",
+                        "m",
+                        "n",
+                        "o",
+                        "p",
+                        "q",
+                        "r",
+                        "s",
+                        "t",
+                        "u",
+                        "v",
+                        "w",
+                        "x",
+                        "y",
+                        "z",
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G",
+                        "H",
+                        "I",
+                        "J",
+                        "K",
+                        "L",
+                        "M",
+                        "N",
+                        "O",
+                        "P",
+                        "Q",
+                        "R",
+                        "S",
+                        "T",
+                        "U",
+                        "V",
+                        "W",
+                        "X",
+                        "Y",
+                        "Z",
+                    )
+                ):
                     result += " "
 
         return result

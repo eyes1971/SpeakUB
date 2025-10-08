@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Test script to demonstrate TTS panel layout testing.
@@ -6,6 +13,8 @@ This script shows how to test the TTS panel layout in the EPUB reader.
 
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
@@ -23,7 +32,7 @@ def test_tts_panel_layout():
         print(
             "❌ Test EPUB file not found. Please ensure test_cpu_optimization.epub exists."
         )
-        return False
+        pytest.skip("Test EPUB file not found")
 
     print(f"✅ Found test EPUB: {test_epub}")
     print("\n📋 TTS Panel Layout Test Instructions:")
@@ -53,13 +62,11 @@ def test_tts_panel_layout():
 
         # Run with the test EPUB file
         main([str(test_epub)])
-        return True
     except KeyboardInterrupt:
         print("\n✅ Test completed (user interrupted)")
-        return True
     except Exception as e:
         print(f"❌ Error running test: {e}")
-        return False
+        pytest.fail(f"Error running TTS panel layout test: {e}")
 
 
 def test_tts_panel_components():
@@ -69,7 +76,6 @@ def test_tts_panel_components():
 
     try:
         from textual.app import App
-        from textual.containers import Horizontal
 
         from speakub.ui.tts_panel import TTSPanel
 
@@ -89,11 +95,9 @@ def test_tts_panel_components():
         print("   - Flex ratios: 1:8:1")
         print("   - Minimum widths: 10, 40, 10 characters")
 
-        return True
-
     except Exception as e:
         print(f"❌ Error testing components: {e}")
-        return False
+        pytest.fail(f"Error testing TTS panel components: {e}")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,7 @@
+
+
+
+
 #!/usr/bin/env python3
 """
 Unit tests for EPUB parser functionality.
@@ -6,7 +10,6 @@ Unit tests for EPUB parser functionality.
 import os
 import tempfile
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -26,15 +29,18 @@ class TestNormalizeSrcForMatching:
 
     def test_normalize_with_path(self):
         """Test normalizing path with directories."""
-        assert normalize_src_for_matching("content/chapter1.html") == "chapter1.html"
+        assert normalize_src_for_matching(
+            "content/chapter1.html") == "chapter1.html"
 
     def test_normalize_with_fragment(self):
         """Test normalizing URL with fragment."""
-        assert normalize_src_for_matching("chapter1.html#section1") == "chapter1.html"
+        assert normalize_src_for_matching(
+            "chapter1.html#section1") == "chapter1.html"
 
     def test_normalize_percent_encoded(self):
         """Test normalizing percent-encoded URL."""
-        assert normalize_src_for_matching("chapter%201.html") == "chapter 1.html"
+        assert normalize_src_for_matching(
+            "chapter%201.html") == "chapter 1.html"
 
     def test_normalize_case_conversion(self):
         """Test case conversion to lowercase."""
@@ -144,29 +150,11 @@ class TestEPUBParser:
             assert "toc_source" in toc
             assert toc["book_title"] == "Test Book"
 
-    def test_normalize_zip_path(self, sample_epub_path):
-        """Test zip path normalization."""
+    def test_cache_functionality(self, sample_epub_path):
+        """Test that chapter reading uses caching."""
         with EPUBParser(sample_epub_path) as parser:
-            # Test various path formats
-            assert parser._normalize_zip_path("chapter1.html") == "chapter1.html"
-            assert parser._normalize_zip_path("/chapter1.html") == "chapter1.html"
-            assert (
-                parser._normalize_zip_path("content/chapter1.html")
-                == "content/chapter1.html"
-            )
-            assert parser._normalize_zip_path("./chapter1.html") == "chapter1.html"
-
-    def test_possible_extensions(self, sample_epub_path):
-        """Test extension generation."""
-        with EPUBParser(sample_epub_path) as parser:
-            # File with extension
-            exts = parser._possible_extensions("chapter1.html")
-            assert ".html" in exts
-            assert ".xhtml" in exts
-
-            # File without extension
-            exts = parser._possible_extensions("chapter1")
-            assert ".xhtml" in exts
-            assert ".html" in exts
-            assert ".htm" in exts
-            assert ".xml" in exts
+            # Read the same chapter twice - should use cache on second read
+            content1 = parser.read_chapter("chapter1.xhtml")
+            content2 = parser.read_chapter("chapter1.xhtml")
+            assert content1 == content2
+            assert "Chapter 1" in content1

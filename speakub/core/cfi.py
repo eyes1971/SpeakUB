@@ -3,7 +3,9 @@
 cfi.py - EPUB Canonical Fragment Identifier implementation
 Source: Ported from epub_cfi.py for Python EPUB reader
 """
+
 import re
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from bs4 import NavigableString, Tag
@@ -12,11 +14,12 @@ from bs4 import NavigableString, Tag
 class EPUBCFIError(Exception):
     """Base exception for EPUB CFI operations"""
 
-    pass
 
 
 class CFIPart:
     """Represents a single CFI path part"""
+
+    __slots__ = ("index", "id", "offset", "temporal", "spatial", "text", "side")
 
     def __init__(
         self,
@@ -349,6 +352,10 @@ class CFI:
 class CFIGenerator:
     """Generate CFIs from HTML documents"""
 
+    _indexed_cache: Dict[int, Tuple[List[Any], float]] = {}
+    _cache_max_size = 100
+    _cache_ttl = 300  # 5 minutes
+
     @staticmethod
     def is_text_node(node: Any) -> bool:
         """Check if node is a text node"""
@@ -377,7 +384,30 @@ class CFIGenerator:
     @classmethod
     def index_child_nodes(cls, node: Any) -> List[Any]:
         """Index child nodes according to CFI rules"""
+        node_id = id(node)
+        current_time = time.time()
+
+        # Check cache validity
+        if node_id in cls._indexed_cache:
+            cached_data, timestamp = cls._indexed_cache[node_id]
+            if current_time - timestamp < cls._cache_ttl:
+                return cached_data
+
+        # Clean up expired cache entries if cache is too large
+        if len(cls._indexed_cache) > cls._cache_max_size:
+            expired = [
+                k
+                for k, (_, ts) in cls._indexed_cache.items()
+                if current_time - ts > cls._cache_ttl
+            ]
+            # Clean up half of expired entries
+            for k in expired[: len(expired) // 2]:
+                del cls._indexed_cache[k]
+
         nodes = cls.get_child_nodes(node)
+        if not nodes:
+            return []
+
         indexed = []
 
         # Combine consecutive text nodes
@@ -411,7 +441,13 @@ class CFIGenerator:
             result.append(node)
 
         result.append("after")  # Virtual node at end
+        cls._indexed_cache[node_id] = (result, current_time)
         return result
+
+    @classmethod
+    def clear_cache(cls):
+        """Clear the indexed nodes cache. Should be called when changing chapters."""
+        cls._indexed_cache.clear()
 
     @classmethod
     def node_to_parts(cls, node: Any, offset: int = 0) -> List[CFIPart]:

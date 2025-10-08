@@ -93,21 +93,47 @@ class AudioPlayer:
     # This new method will block until the audio finishes playing.
     def play_and_wait(self):
         """
-        Starts audio playback and waits for it to complete.
+        Starts audio playback and waits for it to complete using event-driven monitoring.
         """
+        END_EVENT = pygame.USEREVENT + 1
+
+        # Try to set up event-driven monitoring
+        try:
+            pygame.mixer.music.set_endevent(END_EVENT)
+            event_mode = True
+        except Exception:
+            event_mode = False
+
         if not self.play():
             return  # Could not start playback
 
-        # Wait for the music to finish playing
-        while pygame.mixer.music.get_busy():
-            # Check every 100ms
-            time.sleep(0.1)
+        # Set up timeout protection
+        estimated_duration = self._estimate_audio_duration()
+        timeout = time.time() + estimated_duration + 10  # Extra 10 seconds buffer
 
-        # Ensure state is updated after finishing
-        self.is_playing = False
-        self.is_paused = False
-        self._change_state("finished")
-        self._stop_position_tracking()
+        try:
+            while time.time() < timeout:
+                if event_mode:
+                    # Event-driven mode: efficient waiting
+                    pygame.event.pump()
+                    for event in pygame.event.get():
+                        if event.type == END_EVENT:
+                            self._finalize_playback()
+                            return
+                    time.sleep(0.01)  # Minimal sleep to avoid busy waiting
+                else:
+                    # Fallback polling mode
+                    if not pygame.mixer.music.get_busy():
+                        self._finalize_playback()
+                        return
+                    time.sleep(0.1)
+
+        except Exception:
+            # Any exception falls back to simple polling
+            self._fallback_polling_wait()
+
+        # Timeout case cleanup
+        self._finalize_playback()
 
     # ***** END OF FIX *****
 
@@ -192,6 +218,19 @@ class AudioPlayer:
         """Check if audio is currently playing."""
         return pygame.mixer.music.get_busy()
 
+    def get_status(self) -> dict:
+        """Get current player status for debugging."""
+        return {
+            "current_file": self.current_file,
+            "is_playing": self.is_playing,
+            "is_paused": self.is_paused,
+            "position": self.position,
+            "duration": self.duration,
+            "volume": self.volume,
+            "speed": self.speed,
+            "pygame_busy": pygame.mixer.music.get_busy() if PYGAME_AVAILABLE else False,
+        }
+
     def get_position(self) -> float:
         """Get current playback position in seconds."""
         return self.position
@@ -248,6 +287,32 @@ class AudioPlayer:
         """Change player state and notify listeners."""
         if self.on_state_changed:
             self.on_state_changed(state)
+
+    def _estimate_audio_duration(self) -> float:
+        """Estimate audio duration for timeout calculation."""
+        try:
+            if self.current_file and Path(self.current_file).exists():
+                file_size = Path(self.current_file).stat().st_size
+                # Rough estimate: MP3 at ~128kbps
+                # 128 kbps = 128 * 1024 / 8 bytes per second
+                bitrate_bytes_per_sec = 128 * 1024 / 8
+                return file_size / bitrate_bytes_per_sec
+        except Exception:
+            pass
+        return 30.0  # Default 30 seconds
+
+    def _finalize_playback(self) -> None:
+        """Finalize playback state after completion."""
+        self.is_playing = False
+        self.is_paused = False
+        self._change_state("finished")
+        self._stop_position_tracking()
+
+    def _fallback_polling_wait(self) -> None:
+        """Fallback polling method for audio completion."""
+        while pygame.mixer.music.get_busy():
+            time.sleep(0.1)
+        self._finalize_playback()
 
     def _report_error(self, error_message: str) -> None:
         """Report error to listeners."""

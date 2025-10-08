@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Test module for switching Edge-TTS voices during script execution.
@@ -9,8 +16,6 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 try:
-    import edge_tts
-
     EDGE_TTS_AVAILABLE = True
 except ImportError:
     EDGE_TTS_AVAILABLE = False
@@ -83,21 +88,26 @@ class TestVoiceSwitching(unittest.TestCase):
             self.provider.stop_async_loop()
 
     @patch("edge_tts.list_voices")
-    async def test_get_available_voices(self, mock_list_voices):
+    def test_get_available_voices(self, mock_list_voices):
         """Test getting available voices."""
-        mock_list_voices.return_value = self.mock_voices
+        import asyncio
 
-        voices = await self.provider.get_available_voices()
+        async def run_test():
+            mock_list_voices.return_value = self.mock_voices
 
-        self.assertIsInstance(voices, list)
-        self.assertEqual(len(voices), 4)
+            voices = await self.provider.get_available_voices()
 
-        # Check that voices contain expected information
-        for voice in voices:
-            self.assertIn("name", voice)
-            self.assertIn("short_name", voice)
-            self.assertIn("gender", voice)
-            self.assertIn("locale", voice)
+            self.assertIsInstance(voices, list)
+            self.assertEqual(len(voices), 4)
+
+            # Check that voices contain expected information
+            for voice in voices:
+                self.assertIn("name", voice)
+                self.assertIn("short_name", voice)
+                self.assertIn("gender", voice)
+                self.assertIn("locale", voice)
+
+        asyncio.run(run_test())
 
     @patch("edge_tts.list_voices")
     def test_get_voices_by_language(self, mock_list_voices):
@@ -140,64 +150,74 @@ class TestVoiceSwitching(unittest.TestCase):
         self.assertEqual(self.provider.get_current_voice(), "en-US-AriaNeural")
 
     @patch("edge_tts.Communicate")
-    async def test_synthesize_with_different_voices(self, mock_communicate):
+    def test_synthesize_with_different_voices(self, mock_communicate):
         """Test synthesizing text with different voices."""
-        # Mock the communicate object
-        mock_comm_instance = AsyncMock()
-        mock_comm_instance.stream.return_value = [
-            {"type": "audio", "data": b"test_audio_data"}
-        ]
-        mock_communicate.return_value = mock_comm_instance
+        import asyncio
 
-        # Test with default voice (should be zh-TW)
-        audio_data = await self.provider.synthesize(self.test_text)
-        self.assertIsInstance(audio_data, bytes)
-        mock_communicate.assert_called_with(
-            text=self.test_text,
-            voice="zh-TW-HsiaoChenNeural",
-            rate="+0%",
-            pitch="+0Hz",
-            volume="+0%",
-        )
+        async def run_test():
+            # Mock the communicate object
+            mock_comm_instance = AsyncMock()
+            mock_comm_instance.stream.return_value = [
+                {"type": "audio", "data": b"test_audio_data"}
+            ]
+            mock_communicate.return_value = mock_comm_instance
 
-        # Test with specific voice
-        audio_data = await self.provider.synthesize(
-            self.test_text, voice="zh-CN-XiaoxiaoNeural"
-        )
-        self.assertIsInstance(audio_data, bytes)
-        mock_communicate.assert_called_with(
-            text=self.test_text,
-            voice="zh-CN-XiaoxiaoNeural",
-            rate="+0%",
-            pitch="+0Hz",
-            volume="+0%",
-        )
+            # Test with default voice (should be zh-TW)
+            audio_data = await self.provider.synthesize(self.test_text)
+            self.assertIsInstance(audio_data, bytes)
+            mock_communicate.assert_called_with(
+                text=self.test_text,
+                voice="zh-TW-HsiaoChenNeural",
+                rate="+0%",
+                pitch="+0Hz",
+                volume="+0%",
+            )
+
+            # Test with specific voice
+            audio_data = await self.provider.synthesize(
+                self.test_text, voice="zh-CN-XiaoxiaoNeural"
+            )
+            self.assertIsInstance(audio_data, bytes)
+            mock_communicate.assert_called_with(
+                text=self.test_text,
+                voice="zh-CN-XiaoxiaoNeural",
+                rate="+0%",
+                pitch="+0Hz",
+                volume="+0%",
+            )
+
+        asyncio.run(run_test())
 
     @patch("edge_tts.Communicate")
-    async def test_synthesize_with_custom_parameters(self, mock_communicate):
+    def test_synthesize_with_custom_parameters(self, mock_communicate):
         """Test synthesizing with custom rate, pitch, and volume."""
-        mock_comm_instance = AsyncMock()
-        mock_comm_instance.stream.return_value = [
-            {"type": "audio", "data": b"test_audio_data"}
-        ]
-        mock_communicate.return_value = mock_comm_instance
+        import asyncio
 
-        # Test with custom parameters
-        audio_data = await self.provider.synthesize(
-            self.test_text,
-            voice="zh-CN-XiaoxiaoNeural",
-            rate="+20%",
-            pitch="+5Hz",
-            volume="-10%",
-        )
-        self.assertIsInstance(audio_data, bytes)
-        mock_communicate.assert_called_with(
-            text=self.test_text,
-            voice="zh-CN-XiaoxiaoNeural",
-            rate="+20%",
-            pitch="+5Hz",
-            volume="-10%",
-        )
+        async def run_test():
+            mock_comm_instance = AsyncMock()
+            mock_comm_instance.stream.return_value = [
+                {"type": "audio", "data": b"test_audio_data"}
+            ]
+            mock_communicate.return_value = mock_comm_instance
+
+            # Test with custom parameters
+            audio_data = await self.provider.synthesize(
+                self.test_text,
+                voice="zh-CN-XiaoxiaoNeural",
+                rate="+20%",
+                pitch="+5Hz",
+                volume="-10%",
+            )
+            self.assertIsInstance(audio_data, bytes)
+            mock_communicate.assert_called_with(
+                text=self.test_text,
+                voice="zh-CN-XiaoxiaoNeural",
+                rate="+20%",
+                pitch="+5Hz",
+                volume="-10%",
+            )
+
+        asyncio.run(run_test())
 
     def test_default_voice_is_female_chinese(self):
         """Test that default voice is female Chinese."""
@@ -208,27 +228,32 @@ class TestVoiceSwitching(unittest.TestCase):
         self.assertIn(current_voice, self.provider.DEFAULT_VOICES.values())
 
     @patch("edge_tts.list_voices")
-    async def test_get_female_chinese_voices(self, mock_list_voices):
+    def test_get_female_chinese_voices(self, mock_list_voices):
         """Test getting female Chinese voices specifically."""
-        mock_list_voices.return_value = self.mock_voices
+        import asyncio
 
-        voices = await self.provider.get_available_voices()
+        async def run_test():
+            mock_list_voices.return_value = self.mock_voices
 
-        # Filter for female Chinese voices
-        female_chinese_voices = [
-            voice
-            for voice in voices
-            if voice["gender"] == "Female" and voice["locale"].startswith("zh")
-        ]
+            voices = await self.provider.get_available_voices()
 
-        self.assertEqual(len(female_chinese_voices), 2)
+            # Filter for female Chinese voices
+            female_chinese_voices = [
+                voice
+                for voice in voices
+                if voice["gender"] == "Female" and voice["locale"].startswith("zh")
+            ]
 
-        # Verify voice names
-        voice_names = [voice["short_name"] for voice in female_chinese_voices]
-        self.assertIn("zh-TW-HsiaoChenNeural", voice_names)
-        self.assertIn("zh-CN-XiaoxiaoNeural", voice_names)
+            self.assertEqual(len(female_chinese_voices), 2)
 
-    async def test_voice_switching_during_execution(self):
+            # Verify voice names
+            voice_names = [voice["short_name"] for voice in female_chinese_voices]
+            self.assertIn("zh-TW-HsiaoChenNeural", voice_names)
+            self.assertIn("zh-CN-XiaoxiaoNeural", voice_names)
+
+        asyncio.run(run_test())
+
+    def test_voice_switching_during_execution(self):
         """Test switching voices during script execution."""
         # This would be a more complex integration test
         # For now, we'll test the basic switching mechanism
@@ -264,43 +289,48 @@ class TestVoiceSwitchingIntegration(unittest.TestCase):
             self.provider.stop_async_loop()
 
     @patch("edge_tts.list_voices")
-    async def test_full_voice_workflow(self, mock_list_voices):
+    def test_full_voice_workflow(self, mock_list_voices):
         """Test complete workflow of voice selection and usage."""
-        mock_list_voices.return_value = [
-            {
-                "Name": "Microsoft HsiaoChen Online (Natural) - Chinese (Taiwan)",
-                "ShortName": "zh-TW-HsiaoChenNeural",
-                "Gender": "Female",
-                "Locale": "zh-TW",
-                "DisplayName": "HsiaoChen",
-                "LocalName": "HsiaoChen",
-                "StyleList": ["cheerful", "sad"],
-                "SampleRateHertz": 24000,
-                "VoiceType": "Neural",
-            }
-        ]
+        import asyncio
 
-        # Get available voices
-        voices = await self.provider.get_available_voices()
-        self.assertGreater(len(voices), 0)
+        async def run_test():
+            mock_list_voices.return_value = [
+                {
+                    "Name": "Microsoft HsiaoChen Online (Natural) - Chinese (Taiwan)",
+                    "ShortName": "zh-TW-HsiaoChenNeural",
+                    "Gender": "Female",
+                    "Locale": "zh-TW",
+                    "DisplayName": "HsiaoChen",
+                    "LocalName": "HsiaoChen",
+                    "StyleList": ["cheerful", "sad"],
+                    "SampleRateHertz": 24000,
+                    "VoiceType": "Neural",
+                }
+            ]
 
-        # Select a female Chinese voice
-        female_chinese_voice = None
-        for voice in voices:
-            if voice["gender"] == "Female" and voice["locale"].startswith("zh"):
-                female_chinese_voice = voice["short_name"]
-                break
+            # Get available voices
+            voices = await self.provider.get_available_voices()
+            self.assertGreater(len(voices), 0)
 
-        self.assertIsNotNone(female_chinese_voice)
-        assert female_chinese_voice is not None  # For type checker
+            # Select a female Chinese voice
+            female_chinese_voice = None
+            for voice in voices:
+                if voice["gender"] == "Female" and voice["locale"].startswith("zh"):
+                    female_chinese_voice = voice["short_name"]
+                    break
 
-        # Set the voice
-        result = self.provider.set_voice(female_chinese_voice)
-        self.assertTrue(result)
+            self.assertIsNotNone(female_chinese_voice)
+            assert female_chinese_voice is not None  # For type checker
 
-        # Verify the voice was set
-        current_voice = self.provider.get_current_voice()
-        self.assertEqual(current_voice, female_chinese_voice)
+            # Set the voice
+            result = self.provider.set_voice(female_chinese_voice)
+            self.assertTrue(result)
+
+            # Verify the voice was set
+            current_voice = self.provider.get_current_voice()
+            self.assertEqual(current_voice, female_chinese_voice)
+
+        asyncio.run(run_test())
 
 
 def run_voice_switching_demo():

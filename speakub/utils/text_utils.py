@@ -3,14 +3,31 @@
 Text processing utilities.
 """
 
-import logging
-from typing import Dict, List
-
 import re
-from typing import Optional
+import unicodedata
+from typing import Dict
+
+from wcwidth import wcswidth
 
 from speakub.utils.config import load_pronunciation_corrections
-from wcwidth import wcswidth
+
+# Pre-compiled regex patterns for better performance
+_CONTROL_CHARS_PATTERN = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
+_WHITESPACE_PATTERN = re.compile(r"[ \t]+")
+_MULTIPLE_NEWLINES_PATTERN = re.compile(r"\n\s*\n\s*\n+")
+_IMAGE_REF_PATTERN = re.compile(r"\[Image[^\]]*\]")
+_UNSUPPORTED_CONTENT_PATTERN = re.compile(r"\[.*?Content\]")
+_BOLD_PATTERN = re.compile(r"\*\*(.*?)\*\*")
+_ITALIC_PATTERN = re.compile(r"\*(.*?)\*")
+_UNDERLINE_PATTERN = re.compile(r"_{2,}")
+_MULTIPLE_DOTS_PATTERN = re.compile(r"[.]{3,}")
+_MULTIPLE_DASHES_PATTERN = re.compile(r"[-]{3,}")
+_SENTENCE_PAUSE_PATTERN = re.compile(r"([.!?])\s*\n\s*")
+_COLON_PAUSE_PATTERN = re.compile(r":\s*\n")
+_MARKDOWN_CHARS_PATTERN = re.compile(r"[#*_`]+")
+_CHAPTER_PREFIX_PATTERN = re.compile(r"^(Chapter\s+\d+[:\-\s]*)", re.IGNORECASE)
+_CHINESE_CHAPTER_PREFIX_PATTERN = re.compile(r"^(第\s*\d+\s*[章节][:\-\s]*)")
+_SENTENCE_ENDINGS_PATTERN = re.compile(r"[.!?]+")
 
 # Load user-defined correction dictionary
 _corrections_map: Dict[str, str] = load_pronunciation_corrections()
@@ -121,12 +138,13 @@ def clean_text_for_display(text: str) -> str:
         return ""
 
     # Remove control characters except newlines and tabs
-    text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", text)
+    text = _CONTROL_CHARS_PATTERN.sub("", text)
 
     # Normalize whitespace
-    text = re.sub(r"[ \t]+", " ", text)  # Multiple spaces/tabs to single space
+    # Multiple spaces/tabs to single space
+    text = _WHITESPACE_PATTERN.sub(" ", text)
     # Multiple newlines to double
-    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    text = _MULTIPLE_NEWLINES_PATTERN.sub("\n\n", text)
 
     return text.strip()
 
@@ -145,25 +163,25 @@ def clean_text_for_tts(text: str) -> str:
         return ""
 
     # Remove image references and other non-readable elements
-    text = re.sub(r"\[Image[^\]]*\]", "", text)
-    text = re.sub(r"\[.*?Content\]", "", text)  # [Unsupported Content]
+    text = _IMAGE_REF_PATTERN.sub("", text)
+    text = _UNSUPPORTED_CONTENT_PATTERN.sub("", text)  # [Unsupported Content]
 
     # Clean up markdown-style formatting
-    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)  # **bold** -> text
-    text = re.sub(r"\*(.*?)\*", r"\1", text)  # *italic* -> text
-    text = re.sub(r"_{2,}", "", text)  # Remove underlines
+    text = _BOLD_PATTERN.sub(r"\1", text)  # **bold** -> text
+    text = _ITALIC_PATTERN.sub(r"\1", text)  # *italic* -> text
+    text = _UNDERLINE_PATTERN.sub("", text)  # Remove underlines
 
     # Clean up excessive punctuation
-    text = re.sub(r"[.]{3,}", "...", text)  # Multiple dots
-    text = re.sub(r"[-]{3,}", "---", text)  # Multiple dashes
+    text = _MULTIPLE_DOTS_PATTERN.sub("...", text)  # Multiple dots
+    text = _MULTIPLE_DASHES_PATTERN.sub("---", text)  # Multiple dashes
 
     # Normalize whitespace
     text = clean_text_for_display(text)
 
     # Add pauses for better TTS flow
     # Pause after sentences at line end
-    text = re.sub(r"([.!?])\s*\n\s*", r"\1\n\n", text)
-    text = re.sub(r":\s*\n", ":\n\n", text)  # Pause after colons
+    text = _SENTENCE_PAUSE_PATTERN.sub(r"\1\n\n", text)
+    text = _COLON_PAUSE_PATTERN.sub(":\n\n", text)  # Pause after colons
 
     return text
 
@@ -189,7 +207,7 @@ def extract_title_from_text(text: str, max_length: int = 50) -> str:
         line = line.strip()
         if line:
             # Clean up the title
-            title = re.sub(r"[#*_`]", "", line)  # Remove markdown
+            title = _MARKDOWN_CHARS_PATTERN.sub("", line)  # Remove markdown
             title = title.strip()
 
             if title:
@@ -281,9 +299,9 @@ def normalize_chapter_title(title: str) -> str:
     title = " ".join(title.split())
 
     # Remove common prefixes that might be redundant
-    title = re.sub(r"^(Chapter\s+\d+[:\-\s]*)", "", title, flags=re.IGNORECASE)
+    title = _CHAPTER_PREFIX_PATTERN.sub("", title)
     # Remove Chinese chapter prefixes (e.g., "第1章", "第2节")
-    title = re.sub(r"^(第\s*\d+\s*[章节][:\-\s]*)", "", title)
+    title = _CHINESE_CHAPTER_PREFIX_PATTERN.sub("", title)
 
     # Clean up remaining text
     title = title.strip(" :-")
@@ -311,7 +329,7 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
 
     # Count words and sentences
     words = len(text.split())
-    sentences = len(re.findall(r"[.!?]+", text))
+    sentences = len(_SENTENCE_ENDINGS_PATTERN.findall(text))
 
     if words == 0:
         return {
@@ -353,15 +371,22 @@ def correct_chinese_pronunciation(text: str) -> str:
     Correct Chinese pronunciation using external configuration file
     with "longest match first" principle and support for both
     traditional and simplified Chinese characters.
+
+    Uses Unicode NFC normalization to handle composed/decomposed forms.
     """
     if not text or not _sorted_correction_keys:
         return text
 
+    # Normalize text to NFC form to handle composed/decomposed Unicode
+    normalized_text = unicodedata.normalize("NFC", text)
+
     # Apply corrections in order of longest to shortest keys
     for original_word in _sorted_correction_keys:
-        # Check if the word exists in text
-        if original_word in text:
+        # Also normalize the correction key for consistency
+        normalized_key = unicodedata.normalize("NFC", original_word)
+        # Check if the normalized word exists in normalized text
+        if normalized_key in normalized_text:
             replacement = _corrections_map[original_word]
-            text = text.replace(original_word, replacement)
+            normalized_text = normalized_text.replace(normalized_key, replacement)
 
-    return text
+    return normalized_text

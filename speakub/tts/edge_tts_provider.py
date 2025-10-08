@@ -4,7 +4,10 @@ Edge-TTS Provider - Microsoft Edge TTS implementation.
 """
 
 import asyncio
+import logging
+import os
 import tempfile
+import threading
 from typing import Any, Dict, List, Optional
 
 try:
@@ -16,6 +19,8 @@ except ImportError:
 
 from speakub.tts.audio_player import AudioPlayer
 from speakub.tts.engine import TTSEngine, TTSState
+
+logger = logging.getLogger(__name__)
 
 
 class EdgeTTSProvider(TTSEngine):
@@ -42,10 +47,77 @@ class EdgeTTSProvider(TTSEngine):
         self._voices_cache: Optional[List[Dict[str, Any]]] = None
         self._current_voice = self.DEFAULT_VOICES.get("zh-TW", "zh-TW-HsiaoChenNeural")
 
+        # State management using the unified TTSState
+        self._audio_state = TTSState.IDLE
+        self._state_lock = threading.Lock()
+
+        # Audio state tracking for pause/resume
+        # Currently loaded audio file
+        self._current_audio_file: Optional[str] = None
+        self._current_text: Optional[str] = None  # Text of current audio
+        # Track pause state (backward compatibility)
+        self._is_paused: bool = False
+
         # Set up audio player callbacks
         self.audio_player.on_state_changed = self._on_audio_state_changed
         self.audio_player.on_position_changed = self._update_position
         self.audio_player.on_error = self._report_error
+
+    def _transition_state(self, new_state: TTSState) -> bool:
+        """Safe state transition with validation."""
+        with self._state_lock:
+            # Define valid state transitions
+            valid_transitions = {
+                TTSState.IDLE: {TTSState.LOADING, TTSState.ERROR},
+                TTSState.LOADING: {TTSState.PLAYING, TTSState.STOPPED, TTSState.ERROR},
+                TTSState.PLAYING: {TTSState.PAUSED, TTSState.STOPPED, TTSState.ERROR},
+                TTSState.PAUSED: {TTSState.PLAYING, TTSState.STOPPED, TTSState.ERROR},
+                TTSState.STOPPED: {TTSState.IDLE, TTSState.LOADING},
+                # Error recovery paths
+                TTSState.ERROR: {TTSState.IDLE, TTSState.STOPPED},
+            }
+
+            if new_state in valid_transitions.get(self._audio_state, set()):
+                old_state = self._audio_state
+                self._audio_state = new_state
+                logger.info(
+                    "TTS state transition: %s -> %s | file=%s | paused=%s",
+                    old_state.value,
+                    new_state.value,
+                    self._current_audio_file or "None",
+                    self._is_paused,
+                    extra={"component": "tts", "action": "state_change"},
+                )
+                return True
+            else:
+                logger.warning(
+                    "Invalid TTS state transition: %s -> %s | file=%s | paused=%s",
+                    self._audio_state.value,
+                    new_state.value,
+                    self._current_audio_file or "None",
+                    self._is_paused,
+                    extra={"component": "tts", "action": "invalid_transition"},
+                )
+                return False
+
+    def _update_state(self, new_state: TTSState) -> None:
+        """Update state without validation (for monitoring)."""
+        with self._state_lock:
+            old_state = self._audio_state
+            self._audio_state = new_state
+            logger.debug(
+                "TTS state updated: %s -> %s | file=%s | paused=%s",
+                old_state.value,
+                new_state.value,
+                self._current_audio_file or "None",
+                self._is_paused,
+                extra={"component": "tts", "action": "state_update"},
+            )
+
+    def get_current_state(self) -> str:
+        """Get current state for monitoring."""
+        with self._state_lock:
+            return self._audio_state.value
 
     def _on_audio_state_changed(self, player_state: str) -> None:
         """Handle audio player state changes."""
@@ -154,11 +226,16 @@ class EdgeTTSProvider(TTSEngine):
             return True
 
         # Check for valid voice name pattern: xx-XX-Name format
-        import re
-
-        if re.match(r"^[a-z]{2}-[A-Z]{2}-[A-Za-z]+Neural$", voice_name):
-            self._current_voice = voice_name
-            return True
+        if (
+            voice_name
+            and len(voice_name.split("-")) >= 3
+            and voice_name.endswith("Neural")
+        ):
+            # Basic validation: xx-XX-NameNeural format
+            parts = voice_name.split("-")
+            if len(parts) >= 3 and len(parts[0]) == 2 and len(parts[1]) == 2:
+                self._current_voice = voice_name
+                return True
 
         return False
 
@@ -166,35 +243,113 @@ class EdgeTTSProvider(TTSEngine):
         """Get the currently selected voice."""
         return self._current_voice
 
-    # ***** START OF FIX *****
-    # This method is now async and will wait for playback to finish.
     async def play_audio(self, audio_data: bytes) -> None:
         """
-        Play audio data using the audio player and wait for completion.
+        Play audio data. Uses cached file if resuming from pause.
         """
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-            temp_file.write(audio_data)
-            temp_file.flush()
+        # Update state: starting playback
+        self._update_state(
+            TTSState.LOADING if not self._is_paused else TTSState.PLAYING
+        )
 
-            self.audio_player.load_file(temp_file.name)
+        # Determine if we need a new temp file
+        # We need a new file if:
+        # 1. We don't have a current file, OR
+        # 2. We're not in a paused state (meaning this is new content)
+        need_new_file = (not self._current_audio_file) or (
+            not self._is_paused and audio_data
+        )
 
-            # Run the blocking play_and_wait in a separate thread
-            # so it doesn't block the main asyncio event loop.
-            await asyncio.to_thread(self.audio_player.play_and_wait)
+        # Debug: Show current status before any changes
+        status = self.audio_player.get_status()
+        action = "REUSING" if not need_new_file else "NEW FILE"
+        logger.debug(
+            f"[DEBUG] TTS PLAY START - Action: {action}, File: {status.get('current_file', 'None')}, "
+            f"Playing: {status.get('is_playing')}, Paused: {status.get('is_paused')}, "
+            f"Pygame Busy: {status.get('pygame_busy')}, _is_paused: {self._is_paused}"
+        )
 
-    # ***** END OF FIX *****
+        if need_new_file:
+            # Clean up old temp file before creating new one
+            self._cleanup_current_file()
+
+            # Create new temp file
+            fd, temp_path = tempfile.mkstemp(suffix=".mp3")
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(audio_data)
+                self._current_audio_file = temp_path
+                self.audio_player.load_file(temp_path)
+                logger.debug(f"Created new temp file: {temp_path}")
+            except Exception as e:
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
+                raise e
+        else:
+            logger.debug(f"Reusing existing temp file: {self._current_audio_file}")
+
+        # Update state: preparing to play
+        self._update_state(TTSState.PLAYING)
+
+        # Reset pause flag before playing
+        self._is_paused = False
+
+        # Play the audio (blocks until complete)
+        await asyncio.to_thread(self.audio_player.play_and_wait)
+
+        # Clean up after playback completes naturally (but not if we're paused)
+        if not self._is_paused:
+            self._cleanup_current_file()
+            self._update_state(TTSState.IDLE)
+
+    def _cleanup_current_file(self) -> None:
+        """Clean up the current temporary file."""
+        if self._current_audio_file and os.path.exists(self._current_audio_file):
+            try:
+                os.unlink(self._current_audio_file)
+                logger.debug(f"Cleaned up temp file: {self._current_audio_file}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to delete temp file {self._current_audio_file}: {e}"
+                )
+        self._current_audio_file = None
+        self._current_text = None
 
     def pause(self) -> None:
-        """Pause audio playback."""
-        self.audio_player.pause()
+        """Pause audio playback without cleaning up temp file."""
+        if self._transition_state(TTSState.PAUSED):
+            self.audio_player.pause()
+            self._is_paused = True
+            self._change_state(TTSState.PAUSED)
+            status = self.audio_player.get_status()
+            logger.debug(
+                f"[DEBUG] TTS PAUSED - File: {status.get('current_file', 'None')}, "
+                f"Playing: {status.get('is_playing')}, Paused: {status.get('is_paused')}, "
+                f"Pygame Busy: {status.get('pygame_busy')}"
+            )
 
     def resume(self) -> None:
-        """Resume audio playback."""
-        self.audio_player.resume()
+        """Resume audio playback using existing temp file."""
+        if self._is_paused and self.audio_player.is_busy():
+            if self._transition_state(TTSState.PLAYING):
+                self.audio_player.resume()
+                self._change_state(TTSState.PLAYING)
+                status = self.audio_player.get_status()
+                logger.debug(
+                    f"[DEBUG] TTS RESUMED - File: {status.get('current_file', 'None')}, "
+                    f"Playing: {status.get('is_playing')}, Paused: {status.get('is_paused')}, "
+                    f"Pygame Busy: {status.get('pygame_busy')}"
+                )
 
     def stop(self) -> None:
-        """Stop audio playback."""
-        self.audio_player.stop()
+        """Stop audio playback and clean up current file."""
+        if self._transition_state(TTSState.STOPPED):
+            self.audio_player.stop()
+            self._is_paused = False
+            self._cleanup_current_file()
+            self._change_state(TTSState.STOPPED)
 
     def seek(self, position: int) -> None:
         """
@@ -231,9 +386,51 @@ class EdgeTTSProvider(TTSEngine):
         """
         # Pitch is used during synthesis, not playback
         # This is a placeholder for future implementation
-        pass
 
     def get_pitch(self) -> str:
         """Get current TTS pitch."""
         # Return default pitch since it's synthesis-time parameter
         return "+0Hz"
+
+
+def cleanup_orphaned_tts_files(max_age_hours: int = 24) -> int:
+    """
+    Clean up old TTS temporary files from system temp directory.
+    This is a safety net for files that weren't cleaned up properly.
+
+    Args:
+        max_age_hours: Remove files older than this many hours
+    """
+    import tempfile
+    import time
+    from pathlib import Path
+
+    temp_dir = Path(tempfile.gettempdir())
+    current_time = time.time()
+    max_age_seconds = max_age_hours * 3600
+
+    cleaned_count = 0
+    cleaned_size = 0
+
+    try:
+        # Look for temporary MP3 files (pattern used by NamedTemporaryFile)
+        for filepath in temp_dir.glob("tmp*.mp3"):
+            try:
+                file_age = current_time - filepath.stat().st_mtime
+                if file_age > max_age_seconds:
+                    file_size = filepath.stat().st_size
+                    filepath.unlink()
+                    cleaned_count += 1
+                    cleaned_size += file_size
+            except Exception as e:
+                logger.debug(f"Failed to clean up {filepath}: {e}")
+
+        if cleaned_count > 0:
+            logger.info(
+                f"Cleaned up {cleaned_count} old TTS temporary files "
+                f"({cleaned_size / 1024:.1f} KB total)"
+            )
+    except Exception as e:
+        logger.warning(f"Error during temporary file cleanup: {e}")
+
+    return cleaned_count

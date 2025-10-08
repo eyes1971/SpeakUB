@@ -46,50 +46,69 @@ class ChapterManager:
             self.trace,
         )
 
-    def _build_chapters_from_spine_and_toc(self) -> List[Dict]:
+    def _build_title_map(self) -> Dict[str, str]:
+        """Create a title mapping table from raw chapters using normalized path keys."""
+        return {
+            chap["normalized_src"]: chap["title"]
+            for chap in self.raw_chapters
+            if chap.get("type") == "chapter" and chap.get("normalized_src")
+        }
+
+    def _find_initial_title(self, title_map: Dict[str, str]) -> str:
         """
-        [Final Revised Version] Build a comprehensive chapter list.
-        Implement "title forward carry-over" logic to correctly handle chapters split into multiple files.
+        Find a sensible initial title by finding the first spine item that has a title in the TOC.
+        """
+        for src in self.spine_order:
+            normalized_spine_src = normalize_src_for_matching(src)
+            if normalized_spine_src in title_map:
+                return title_map[normalized_spine_src]
+        return "Untitled Chapter"  # A neutral fallback
+
+    def _create_chapter_list_from_spine(
+        self, title_map: Dict[str, str], initial_title: str
+    ) -> List[Dict]:
+        """
+        Iterate through the spine (the reliable reading order) and create the final chapter list,
+        applying the "title forward carry-over" logic.
         """
         chapters = []
+        current_title = initial_title
+        chapter_num = 1
+
+        for src in self.spine_order:
+            normalized_spine_src = normalize_src_for_matching(src)
+
+            # If a new title is found in the mapping table, update current_title.
+            # Otherwise, current_title retains its value from the previous iteration.
+            if normalized_spine_src in title_map:
+                current_title = title_map[normalized_spine_src]
+
+            # Create the final chapter object, always using the carried-over title.
+            chapters.append(
+                {
+                    "type": "chapter",
+                    "title": current_title,
+                    "src": src,
+                    "index": chapter_num,
+                }
+            )
+            chapter_num += 1
+        return chapters
+
+    def _build_chapters_from_spine_and_toc(self) -> List[Dict]:
+        """
+        Build a comprehensive chapter list based on spine order and TOC titles.
+        Implement "title forward carry-over" logic to correctly handle chapters split into multiple files.
+        """
         if not self.spine_order:
             trace_log(
                 "[WARN] Spine order is empty. Cannot build chapter list.", self.trace
             )
             return []
 
-        # 1. Create a title mapping table using "normalized path keys"
-        title_map = {
-            chap["normalized_src"]: chap["title"]
-            for chap in self.raw_chapters
-            if chap.get("type") == "chapter" and chap.get("normalized_src")
-        }
-
-        chapter_num = 1
-        # 2. Initialize current_title outside the loop, which is the key to implementing "carry-over"
-        current_title = "Introduction"
-
-        # 3. Iterate through spine (the only reliable reading order source)
-        for src in self.spine_order:
-            normalized_spine_src = normalize_src_for_matching(src)
-
-            # 4. If a new title is found in the mapping table, "update" current_title
-            if normalized_spine_src in title_map:
-                current_title = title_map[normalized_spine_src]
-            # 5. If not found, we "do nothing", current_title will retain the value from the previous round
-
-            # Create the final chapter object, always use current_title regardless of whether a new title is found
-            chapters.append(
-                {
-                    "type": "chapter",
-                    "title": current_title,  # Always use current_title
-                    "src": src,
-                    "index": chapter_num,
-                }
-            )
-            chapter_num += 1
-
-        return chapters
+        title_map = self._build_title_map()
+        initial_title = self._find_initial_title(title_map)
+        return self._create_chapter_list_from_spine(title_map, initial_title)
 
     def _build_src_mappings(self):
         """Build mappings for navigation between different data structures."""

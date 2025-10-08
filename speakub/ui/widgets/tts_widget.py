@@ -5,11 +5,9 @@ TTS Widget - UI controls for text-to-speech functionality.
 
 import curses
 import logging
-from enum import Enum
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from speakub.tts.engine import TTSEngine, TTSState
-from speakub.utils.text_utils import str_display_width, truncate_str_by_width
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +67,6 @@ class TTSWidget:
     def _on_tts_state_changed(self, state: TTSState) -> None:
         """Handle TTS state changes."""
         # Update UI based on state
-        pass
 
     def _on_position_changed(self, position: int, duration: int) -> None:
         """Handle position updates."""
@@ -79,7 +76,6 @@ class TTSWidget:
     def _on_tts_error(self, error_message: str) -> None:
         """Handle TTS errors."""
         # Could show error in status area
-        pass
 
     def draw(self, start_y: int, content_width: int) -> None:
         """
@@ -395,18 +391,15 @@ class TTSRichWidget:
         """Handle TTS state changes."""
         logger.debug(f"TTSRichWidget._on_tts_state_changed: {state}")
         # In Rich interface, this would update the UI components
-        pass
 
     def _on_position_changed(self, position: int, duration: int) -> None:
         """Handle position updates."""
         # Update progress display
-        pass
 
     def _on_tts_error(self, error_message: str) -> None:
         """Handle TTS errors."""
         logger.error(f"TTSRichWidget._on_tts_error: {error_message}")
         # Show error notification
-        pass
 
     def play(self) -> bool:
         """Start or resume TTS playback."""

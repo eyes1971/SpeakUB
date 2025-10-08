@@ -15,19 +15,17 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static, Tree
 
 from speakub import TTS_AVAILABLE
-from speakub.core.cfi import EPUBCFIError
-from speakub.core.chapter_manager import ChapterManager
-from speakub.core.content_renderer import ContentRenderer
-from speakub.core.epub_parser import EPUBParser
+from speakub.core import ConfigurationError
 from speakub.core.progress_tracker import ProgressTracker
+from speakub.tts.integration import TTSIntegration
 from speakub.ui.actions import SpeakUBActions
+from speakub.ui.epub_manager import EPUBManager
 from speakub.ui.panel_titles import PanelTitle
 from speakub.ui.progress import ProgressManager
-from speakub.ui.tts_integration import TTSIntegration
 from speakub.ui.ui_utils import UIUtils
 from speakub.ui.voice_selector_panel import VoiceSelectorPanel
 from speakub.ui.widgets.content_widget import ContentDisplay, ViewportContent
-from speakub.utils.config import get_tts_config, save_tts_config, validate_tts_config
+from speakub.utils.config import ConfigManager
 
 if TTS_AVAILABLE:
     try:
@@ -44,7 +42,10 @@ logger = logging.getLogger(__name__)
 
 
 class EPUBReaderApp(App):
-    """Main SpeakUB Application using Textual UI."""
+    """Main SpeakUB Application using Textual UI.
+
+    This class implements the AppInterface protocol.
+    """
 
     CSS = """
     #app-container {
@@ -145,11 +146,6 @@ class EPUBReaderApp(App):
         self._debug = bool(debug)
         self.fallback_viewport_height = fallback_viewport_height
 
-        self.epub_parser: Optional[EPUBParser] = None
-        self.content_renderer: Optional[ContentRenderer] = None
-        self.chapter_manager: Optional[ChapterManager] = None
-        self.progress_tracker: Optional[ProgressTracker] = None
-
         self.current_focus = "toc"
         self.toc_visible = True
         self.tts_visible = True
@@ -160,31 +156,60 @@ class EPUBReaderApp(App):
         self.current_viewport_height = fallback_viewport_height
         self._widgets_ready = False
 
-        self.tts_engine = None
+        # Refactored to use private attributes with properties to match AppInterface
+        self._tts_engine: Optional["EdgeTTSProvider"] = None
         self.tts_widget: Optional["TTSRichWidget"] = None
-        self.tts_status = "STOPPED"
+        self._tts_status: str = "STOPPED"
         self.now_reading_text = "..."
 
         # Load TTS configuration from centralized config
         try:
-            tts_config = get_tts_config()
+            config_mgr = ConfigManager()
+            tts_config = config_mgr.get("tts", {})
             self.tts_rate = tts_config["rate"]
             self.tts_volume = tts_config["volume"]
             self.tts_pitch = tts_config["pitch"]
             self.tts_smooth_mode = tts_config["smooth_mode"]
-            logger.debug("TTS configuration loaded from config file")
-        except Exception as e:
+            logger.debug(f"TTS configuration loaded: {tts_config}")
+        except (ConfigurationError, KeyError) as e:
             logger.warning(f"Failed to load TTS config, using defaults: {e}")
             # Fallback to default values
             self.tts_rate = 0
             self.tts_volume = 100
             self.tts_pitch = "+0Hz"
             self.tts_smooth_mode = False
+        except Exception as e:
+            # Include traceback
+            logger.exception("Unexpected error loading TTS config")
+            raise  # Re-raise unexpected errors
 
         self.actions = SpeakUBActions(self)
-        self.progress_manager = ProgressManager(self)
+        self.epub_manager = EPUBManager(self)
+        self.progress_manager = ProgressManager(self, self._update_tts_progress)
         self.tts_integration = TTSIntegration(self)
         self.ui_utils = UIUtils(self)
+        self.progress_tracker: Optional[ProgressTracker] = None
+        self.chapter_manager = None
+
+    # --- Start: Property implementations for AppInterface ---
+    @property
+    def tts_engine(self) -> Optional["EdgeTTSProvider"]:
+        return self._tts_engine
+
+    @tts_engine.setter
+    def tts_engine(self, value: Optional["EdgeTTSProvider"]) -> None:
+        self._tts_engine = value
+
+    @property
+    def tts_status(self) -> str:
+        return self._tts_status
+
+    @tts_status.setter
+    def tts_status(self, value: str) -> None:
+        # Optional: Add validation here in the future
+        self._tts_status = value
+
+    # --- End: Property implementations for AppInterface ---
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the app."""
@@ -227,13 +252,27 @@ class EPUBReaderApp(App):
 
     async def on_mount(self) -> None:
         logger.debug("on_mount started")
+
+        # Clean up orphaned temporary files on startup
+        if TTS_AVAILABLE:
+            try:
+                from speakub.tts.edge_tts_provider import cleanup_orphaned_tts_files
+
+                cleaned = cleanup_orphaned_tts_files(max_age_hours=24)
+                if cleaned > 0:
+                    logger.info(
+                        f"Startup cleanup: removed {cleaned} orphaned TTS files"
+                    )
+            except Exception as e:
+                logger.warning(f"Startup cleanup failed: {e}")
+
         content_display = self.query_one("#content-display", ContentDisplay)
         content_display.app_ref = self
         content_display.can_focus = True
         self._widgets_ready = True
         self.set_timer(0.1, self._delayed_viewport_calculation)
         await self.tts_integration.setup_tts()
-        await self._load_epub()
+        await self.epub_manager.load_epub()
         await self.progress_manager.start_progress_tracking()
         self.ui_utils.update_panel_focus()
         logger.debug("on_mount finished")
@@ -301,78 +340,9 @@ class EPUBReaderApp(App):
     def on_resize(self, event) -> None:
         self.set_timer(0.05, self.ui_utils.calculate_viewport_height)
 
-    async def _load_epub(self) -> None:
-        try:
-            self.epub_parser = EPUBParser(self.epub_path, trace=self._debug)
-            self.epub_parser.open()
-            self.toc_data = self.epub_parser.parse_toc()
-            self.content_renderer = ContentRenderer(
-                content_width=self.ui_utils.calculate_content_width(), trace=self._debug
-            )
-            self.chapter_manager = ChapterManager(self.toc_data, trace=self._debug)
-            self.progress_tracker = ProgressTracker(self.epub_path, trace=self._debug)
-
-            await self.ui_utils.update_toc_tree(self.toc_data)
-            self.ui_utils.update_panel_titles()
-            await self.progress_manager.load_saved_progress()
-            self.ui_utils.update_panel_titles()
-        except Exception as e:
-            logger.exception("Error loading EPUB")
-            self.notify(f"Error: {e}", severity="error")
-
-    async def _load_chapter(
-        self,
-        chapter: dict,
-        cfi: Optional[str] = None,
-        from_start: bool = False,
-        from_end: bool = False,
-    ) -> None:
-        try:
-            self.current_chapter = chapter
-            html_content = self.epub_parser.read_chapter(chapter["src"])
-            self.current_chapter_soup = BeautifulSoup(html_content, "html.parser")
-            content_lines = self.content_renderer.render_chapter(html_content)
-            self.viewport_content = ViewportContent(
-                content_lines, self.current_viewport_height
-            )
-
-            cursor_position = 0
-            if cfi and self.current_chapter_soup:
-                try:
-                    cursor_position = self.progress_manager.get_line_from_cfi(cfi)
-                except (EPUBCFIError, ValueError) as e:
-                    logger.warning(f"CFI resolution failed: {e}")
-                    cursor_position = 0
-
-            if from_end:
-                info = self.viewport_content.get_viewport_info()
-                self.viewport_content.jump_to_page(info["total_pages"] - 1)
-                lines = len(self.viewport_content.get_current_viewport_lines())
-                self.viewport_content.cursor_in_page = max(0, lines - 1)
-            elif from_start:
-                self.viewport_content.jump_to_page(0)
-            else:
-                page, cursor = divmod(cursor_position, self.current_viewport_height)
-                self.viewport_content.jump_to_page(page)
-                lines = len(self.viewport_content.get_current_viewport_lines())
-                self.viewport_content.cursor_in_page = max(0, min(cursor, lines - 1))
-
-            self.ui_utils.update_content_display()
-
-            if self.tts_widget:
-                self.tts_widget.set_text(
-                    self.content_renderer.extract_text_for_tts(html_content)
-                )
-
-            self.title = f"SpeakUB - {self.toc_data.get('book_title', 'Book') if self.toc_data else 'Book'}"
-            self.ui_utils.update_panel_titles()
-        except Exception as e:
-            logger.exception("Error loading chapter")
-            self.notify(f"Error: {e}", severity="error")
-
     def on_tree_node_selected(self, event: Tree.NodeSelected) -> None:
         if event.node.data:
-            self.run_worker(self._load_chapter(event.node.data))
+            self.run_worker(self.epub_manager.load_chapter(event.node.data))
 
     def on_voice_selector_panel_voice_selected(
         self, message: VoiceSelectorPanel.VoiceSelected
@@ -503,8 +473,4 @@ class EPUBReaderApp(App):
     def _cleanup(self) -> None:
         self.tts_integration.cleanup()
         self.progress_manager.cleanup()
-        if self.epub_parser:
-            try:
-                self.epub_parser.close()
-            except Exception:
-                pass
+        self.epub_manager.close_epub()

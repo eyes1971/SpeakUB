@@ -1,6 +1,4 @@
 
-
-
 # SpeakUB 📚
 
 A modern, feature-rich terminal EPUB reader with **Text-to-Speech** support, built with Rich/Textual for a beautiful CLI experience.
@@ -42,7 +40,15 @@ pip install speakub[tts]
 pip install speakub[all]
 ```
 
-## 📋 Requirements
+## �️ Desktop Integration
+
+SpeakUB automatically creates a desktop entry on first run, allowing you to:
+- Right-click EPUB files and select "Open with SpeakUB"
+- Double-click EPUB files to open them directly
+
+The desktop entry uses `speakub %f` command, which automatically detects and launches in your preferred terminal emulator.
+
+## �📋 Requirements
 
 - Python 3.8+
 - Terminal with Unicode support
@@ -108,19 +114,25 @@ speakub/
 ├── speakub/              # Main package
 │   ├── core/             # Core functionality
 │   │   ├── epub_parser.py      # EPUB parsing
-│   │   ├── content_renderer.py # HTML to text conversion
+│   │   ├── content_renderer.py # HTML to text conversion (with adaptive cache)
 │   │   ├── chapter_manager.py  # Chapter navigation
 │   │   └── progress_tracker.py # Reading progress
 │   ├── tts/              # Text-to-Speech
 │   │   ├── engine.py           # TTS abstraction
-│   │   ├── edge_tts_provider.py # Edge-TTS implementation
+│   │   ├── edge_tts_provider.py # Edge-TTS with state machine
+│   │   ├── ui/runners.py       # TTS workers (English comments)
 │   │   └── audio_player.py     # Audio playback
 │   ├── ui/               # User interfaces
 │   │   ├── ui_components.py    # Rich/Textual UI components
 │   │   └── widgets/            # Reusable components
+│   ├── utils/            # Utility functions
+│   │   ├── performance_monitor.py # Performance monitoring
+│   │   └── text_utils.py        # Text processing utilities
 │   ├── cli.py            # Command-line interface
-│   └── utils/            # Utility functions
+│   └── desktop.py        # Desktop integration
 ├── tests/                # Test suite
+│   ├── test_performance_benchmarks.py # Performance benchmarks
+│   └── test_tts_state_machine.py      # TTS state machine tests
 ├── tools/                # Development tools and scripts
 └── docs/                 # Documentation
 ```
@@ -225,7 +237,38 @@ The reader implements intelligent caching to improve performance:
 
 - **Chapter Content Cache**: Stores parsed chapter content (LRU with 50 entries)
 - **Width Calculation Cache**: Caches display width calculations (LRU with 100 entries)
-- **Renderer Cache**: Caches HTML-to-text renderers by width
+- **Adaptive Renderer Cache**: Caches HTML-to-text renderers by width with TTL and statistics
+
+#### Adaptive Cache Features
+
+The new adaptive cache system provides:
+
+- **TTL (Time-To-Live)**: Automatically expires cached items after 5 minutes to prevent memory leaks
+- **LRU Eviction**: Removes least recently used items when cache is full
+- **Performance Statistics**: Tracks hit rates, cache size, and access patterns
+- **Memory-Aware Sizing**: Automatically adjusts cache size based on system memory
+
+### Performance Monitoring
+
+SpeakUB includes built-in performance monitoring to track system health:
+
+```bash
+# Run performance benchmarks
+python tests/test_performance_benchmarks.py
+
+# Monitor cache statistics in real-time
+from speakub.core.content_renderer import ContentRenderer
+renderer = ContentRenderer()
+stats = renderer.get_cache_stats()
+print(f"Cache hit rate: {stats['hit_rate']:.1%}")
+```
+
+#### Performance Metrics
+
+- **Cache Hit Rate**: Percentage of cache requests that hit
+- **Memory Usage**: Current and peak memory consumption
+- **TTS State Changes**: Number of TTS state transitions
+- **Render Time**: Time spent rendering content
 
 To clear all caches, delete the progress file:
 ```bash

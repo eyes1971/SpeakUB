@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Test module for the voice selector functionality in VoiceSelectorPanel.
@@ -8,8 +15,6 @@ import unittest
 from unittest.mock import MagicMock
 
 try:
-    import edge_tts
-
     EDGE_TTS_AVAILABLE = True
 except ImportError:
     EDGE_TTS_AVAILABLE = False
@@ -85,22 +90,27 @@ class TestVoiceSelector(unittest.TestCase):
         mock_table.clear.assert_called_once()
         mock_table.add_row.assert_called()
 
-    async def test_voice_selection_event(self):
+    def test_voice_selection_event(self):
         """Test voice selection event handling."""
-        # Mock the event
-        mock_event = MagicMock()
-        mock_event.row_key.value = "zh-CN-XiaoxiaoNeural"
+        import asyncio
 
-        # Mock the post_message method
-        self.panel.post_message = MagicMock()
+        async def run_test():
+            # Mock the event
+            mock_event = MagicMock()
+            mock_event.row_key.value = "zh-CN-XiaoxiaoNeural"
 
-        # Call the event handler
-        await self.panel.on_data_table_row_selected(mock_event)
+            # Mock the post_message method
+            self.panel.post_message = MagicMock()
 
-        # Verify message was posted
-        self.panel.post_message.assert_called_once()
-        message = self.panel.post_message.call_args[0][0]
-        self.assertEqual(message.voice_short_name, "zh-CN-XiaoxiaoNeural")
+            # Call the event handler
+            await self.panel.on_data_table_row_selected(mock_event)
+
+            # Verify message was posted
+            self.panel.post_message.assert_called_once()
+            message = self.panel.post_message.call_args[0][0]
+            self.assertEqual(message.voice_short_name, "zh-CN-XiaoxiaoNeural")
+
+        asyncio.run(run_test())
 
 
 class TestVoiceSelectorIntegration(unittest.TestCase):

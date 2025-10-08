@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-# SpeakUB - A modern terminal EPUB reader with TTS support.
+"""
+SpeakUB - A modern terminal EPUB reader with TTS support.
+"""
 
-__version__ = "1.0.0"
+__version__ = "1.1.9"
 __author__ = "SpeakUB Team"
 __email__ = "team@speakub.com"
 __description__ = "A rich terminal EPUB reader with TTS support"
@@ -10,6 +12,10 @@ from speakub.core.chapter_manager import ChapterManager
 from speakub.core.content_renderer import ContentRenderer
 from speakub.core.epub_parser import EPUBParser
 from speakub.core.progress_tracker import ProgressTracker
+
+# TTS integration is always available, but TTS functionality
+# depends on edge_tts
+from speakub.tts.integration import TTSIntegration  # noqa: F401
 
 # Optional TTS imports
 try:
@@ -32,6 +38,7 @@ __all__ = [
     "ContentRenderer",
     "ChapterManager",
     "ProgressTracker",
+    "TTSIntegration",
     "TTS_AVAILABLE",
 ]
 

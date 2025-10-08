@@ -89,7 +89,7 @@ ipython_config.py
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
-#P ipfile.lock
+#Pipfile.lock
 
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
@@ -128,11 +128,38 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Project specific
+# SpeakUB specific ignores
 *.epub
-*.mobi
-*.pdf
-*.txt.backup
+*.mp3
+*.wav
+*.m4a
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+dist/
+build/
+*.egg-info/
+.speakub_progress.json
+.speakub_config.json
+config/speakub/corrections.json
 
 # IDE
 .vscode/
@@ -153,9 +180,9 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-*.bak
+temp/
+tmp/
 
-# SpeakUB specific
-speakub.egg-info/
-*.progress.json
+# Logs
 *.log
+logs/

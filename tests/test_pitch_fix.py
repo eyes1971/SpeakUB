@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Test script to verify pitch adjustment fix for negative values.
@@ -70,7 +77,7 @@ def test_pitch_adjustment():
     else:
         print("✗ Some tests failed!")
 
-    return all_passed
+    assert all_passed, "Some pitch adjustment tests failed"
 
 
 def test_edge_case_invalid_format():

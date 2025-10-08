@@ -1,3 +1,5 @@
+
+
 #!/usr/bin/env python3
 """
 Test script for TTS integration functionality.
@@ -11,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from speakub import TTS_AVAILABLE
-from speakub.ui.tts_integration import TTSIntegration
+from speakub.tts.integration import TTSIntegration
 
 
 class MockApp:
@@ -39,13 +41,23 @@ class MockApp:
         """Mock call_from_thread method."""
         func(*args, **kwargs)
 
-    def run_worker(self, func, exclusive=False, thread=False):
+    def run_worker(self, func, name=None, group=None, exclusive=False, thread=False):
         """Mock run_worker method."""
         if thread:
             thread = threading.Thread(target=func, daemon=True)
             thread.start()
         else:
             func()
+
+    def bell(self):
+        """Mock bell method."""
+        pass
+
+    def query_one(self, selector: str, expected_type=None):
+        """Mock query_one method."""
+        # Return a mock widget
+        mock_widget = MagicMock()
+        return mock_widget
 
     def _update_tts_progress(self):
         """Mock update progress method."""
@@ -69,7 +81,9 @@ def mock_app():
 @pytest.fixture
 def tts_integration(mock_app):
     """Fixture providing a TTS integration instance."""
-    return TTSIntegration(mock_app)
+    integration = TTSIntegration(mock_app)
+    mock_app.tts_integration = integration  # Add reference for compatibility
+    return integration
 
 
 class TestTTSIntegration:
@@ -79,8 +93,8 @@ class TestTTSIntegration:
         """Test TTS integration initialization."""
         assert tts_integration.app == mock_app
         assert tts_integration.tts_thread is None
-        assert tts_integration.tts_playlist == []
-        assert tts_integration.tts_playlist_index == 0
+        assert tts_integration.playlist_manager.playlist == []
+        assert tts_integration.playlist_manager.current_index == 0
         assert mock_app.tts_status == "STOPPED"
         assert not tts_integration.network_error_occurred
 
@@ -96,7 +110,7 @@ class TestTTSIntegration:
     @pytest.mark.asyncio
     async def test_setup_tts_failure(self, tts_integration, mock_app):
         """Test TTS setup failure."""
-        with patch("speakub.ui.tts_integration.TTS_AVAILABLE", False):
+        with patch("speakub.tts.integration.TTS_AVAILABLE", False):
             await tts_integration.setup_tts()
             assert mock_app.tts_engine is None
 
@@ -104,7 +118,7 @@ class TestTTSIntegration:
         """Test playlist preparation with no content."""
         mock_app.viewport_content = None
         tts_integration.prepare_tts_playlist()
-        assert tts_integration.tts_playlist == []
+        assert tts_integration.playlist_manager.playlist == []
 
     def test_prepare_tts_playlist_with_content(self, tts_integration, mock_app):
         """Test playlist preparation with content."""
@@ -112,15 +126,16 @@ class TestTTSIntegration:
         mock_viewport = MagicMock()
         mock_viewport.get_cursor_global_position.return_value = 0
         mock_viewport.line_to_paragraph_map = {0: {"index": 0}}
-        mock_viewport.paragraphs = [{"start": 0, "end": 10}, {"start": 10, "end": 20}]
+        mock_viewport.paragraphs = [
+            {"start": 0, "end": 10}, {"start": 10, "end": 20}]
         mock_viewport.get_paragraph_text.side_effect = ["Text 1", "Text 2"]
 
         mock_app.viewport_content = mock_viewport
         tts_integration.prepare_tts_playlist()
 
-        assert len(tts_integration.tts_playlist) == 2
-        assert tts_integration.tts_playlist[0] == ("Text 1", 0)
-        assert tts_integration.tts_playlist[1] == ("Text 2", 10)
+        assert len(tts_integration.playlist_manager.playlist) == 2
+        assert tts_integration.playlist_manager.playlist[0] == ("Text 1", 0)
+        assert tts_integration.playlist_manager.playlist[1] == ("Text 2", 10)
 
     def test_handle_tts_play_pause_from_stopped(self, tts_integration, mock_app):
         """Test play/pause handling from stopped state."""
@@ -263,8 +278,9 @@ class TestTTSIntegration:
     async def test_update_tts_progress(self, tts_integration, mock_app):
         """Test TTS progress update."""
         mock_app.tts_status = "PLAYING"
-        mock_app.tts_playlist = [("text1", 0), ("text2", 10)]
-        tts_integration.tts_playlist_index = 0
+        tts_integration.playlist_manager.playlist = [
+            ("text1", 0), ("text2", 10)]
+        tts_integration.playlist_manager.current_index = 0
 
         # Mock the Static widget and query_one method
         mock_static = MagicMock()
@@ -279,8 +295,8 @@ class TestTTSIntegration:
     async def test_update_tts_progress_with_viewport(self, tts_integration, mock_app):
         """Test TTS progress update with viewport content."""
         mock_app.tts_status = "PLAYING"
-        mock_app.tts_playlist = [("text1", 0)]
-        tts_integration.tts_playlist_index = 0
+        tts_integration.playlist_manager.playlist = [("text1", 0)]
+        tts_integration.playlist_manager.current_index = 0
 
         # Mock viewport content
         mock_viewport = MagicMock()

@@ -3,10 +3,11 @@
 
 import asyncio
 import threading
-import time
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
+
+from speakub.core import TTSError
 
 
 class TTSState(Enum):
@@ -34,42 +35,38 @@ class TTSEngine(ABC):
         self.on_error: Optional[Callable[[str], None]] = None
         self._event_loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
+        self._stop_requested = threading.Event()
 
     @abstractmethod
     async def synthesize(self, text: str, voice: str = "default", **kwargs) -> bytes:
         """
         Synthesize text to audio.
         """
-        pass
 
     @abstractmethod
     async def get_available_voices(self) -> List[Dict[str, Any]]:
         """
         Get list of available voices.
         """
-        pass
 
     @abstractmethod
     def pause(self) -> None:
         """Pause audio playback."""
-        pass
 
     @abstractmethod
     def resume(self) -> None:
         """Resume audio playback."""
-        pass
 
     @abstractmethod
     def stop(self) -> None:
         """Stop audio playback."""
-        pass
+        self._stop_requested.set()
 
     @abstractmethod
     def seek(self, position: int) -> None:
         """
         Seek to position in audio.
         """
-        pass
 
     def set_pitch(self, pitch: str) -> None:
         """
@@ -79,7 +76,6 @@ class TTSEngine(ABC):
             pitch: Pitch value (e.g., "+10Hz", "-5Hz", "+0Hz")
         """
         # Default implementation - subclasses should override
-        pass
 
     def get_pitch(self) -> str:
         """Get current TTS pitch."""
@@ -133,22 +129,39 @@ class TTSEngine(ABC):
         self, text: str, voice: str = "default", **kwargs
     ) -> None:
         """
-        Asynchronously speak text and wait for completion.
+        Speak text with smart caching.
         """
         try:
             self._change_state(TTSState.LOADING)
             self.current_text = text
 
-            audio_data = await self.synthesize(text, voice, **kwargs)
+            # Only synthesize if text is different or we don't have audio
+            if (
+                not hasattr(self, "_current_text")
+                or self._current_text != text
+                or not hasattr(self, "_current_audio_file")
+                or not self._current_audio_file
+            ):
+                audio_data = await self.synthesize(text, voice, **kwargs)
+                if hasattr(self, "_current_text"):
+                    self._current_text = text
+            else:
+                # Reuse existing audio file
+                audio_data = None  # Signal to reuse existing file
 
             self._change_state(TTSState.PLAYING)
-            # ***** START OF FIX *****
-            # Ensure we wait for the audio playback to finish.
-            await self.play_audio(audio_data)
-            # ***** END OF FIX *****
+
+            # play_audio will handle file reuse
+            if audio_data:
+                await self.play_audio(audio_data)
+            else:
+                # Just resume playback
+                await self.play_audio(b"")  # Empty data signals reuse
 
         except Exception as e:
-            self._report_error(str(e))
+            error_msg = f"TTS synthesis failed: {e}"
+            self._report_error(error_msg)
+            raise TTSError(error_msg) from e
 
     def speak_text(self, text: str, voice: str = "default", **kwargs) -> None:
         """
@@ -169,6 +182,7 @@ class TTSEngine(ABC):
         """
         if not self._event_loop:
             self.start_async_loop()
+        self._stop_requested.clear()
 
         if self._event_loop:
             future = asyncio.run_coroutine_threadsafe(
@@ -176,17 +190,23 @@ class TTSEngine(ABC):
             )
             try:
                 # Use a more reasonable timeout and add small sleep to reduce CPU usage
-                # Reduced from 300 to 60 seconds
-                result = future.result(timeout=60)
-                # Add small delay to prevent excessive CPU usage in tight loops
-                time.sleep(0.01)
-                return result
+                # Segmented timeout to allow interruption
+                for _ in range(12):  # 60s total timeout, checked every 5s
+                    if self._stop_requested.is_set():
+                        future.cancel()
+                        raise TTSError("TTS operation cancelled by user.")
+                    try:
+                        return future.result(timeout=5)
+                    except asyncio.TimeoutError:
+                        continue  # Continue to next segment
+                raise TimeoutError("TTS playback timed out after 60s")
             except asyncio.TimeoutError:
-                self._report_error("TTS playback timed out after 60s")
+                self._report_error("TTS synthesis timed out after 60s")
                 raise TimeoutError("TTS playback timed out")
             except Exception as e:
-                self._report_error(f"TTS playback failed: {e}")
-                raise
+                error_msg = f"TTS playback failed: {e}"
+                self._report_error(error_msg)
+                raise TTSError(error_msg) from e
 
     def is_available(self) -> bool:
         """Check if TTS engine is available."""
@@ -208,6 +228,5 @@ class TTSEngine(ABC):
         """
         Play audio data and wait for completion.
         """
-        pass
 
     # ***** END OF FIX *****

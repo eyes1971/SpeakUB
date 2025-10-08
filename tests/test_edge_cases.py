@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Test edge cases for TTS exit fix.
@@ -65,7 +72,7 @@ class EdgeCaseTest:
             self.tts_engine.start_async_loop()
             # TTS engine initialized successfully
             return True
-        except Exception as e:
+        except Exception:
             # Failed to initialize TTS engine: {e}
             return False
 
@@ -101,7 +108,7 @@ class EdgeCaseTest:
             if self.tts_engine and hasattr(self.tts_engine, "stop"):
                 try:
                     self.tts_engine.stop()
-                except Exception as e:
+                except Exception:
                     # Warning: Error stopping TTS engine: {e}
                     # Continue with cleanup even if stop fails
                     pass
@@ -115,7 +122,7 @@ class EdgeCaseTest:
             if not is_pause:
                 # TTS playback fully stopped and reset
                 pass
-        except Exception as e:
+        except Exception:
             # Error in stop_speaking: {e}
             # Ensure we still set the status
             self.tts_status = "STOPPED"
@@ -129,7 +136,7 @@ class EdgeCaseTest:
             try:
                 self.stop_speaking(is_pause=False)
                 # TTS playback stopped during cleanup
-            except Exception as e:
+            except Exception:
                 # Error stopping TTS during cleanup: {e}
                 pass
 
@@ -138,7 +145,7 @@ class EdgeCaseTest:
             try:
                 if hasattr(self.tts_engine, "stop_async_loop"):
                     self.tts_engine.stop_async_loop()
-            except Exception as e:
+            except Exception:
                 # Error stopping TTS async loop: {e}
                 pass
 

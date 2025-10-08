@@ -1,8 +1,38 @@
-"""Core module for SpeakUB."""
+"""
+Core functionality for SpeakUB.
+"""
 
-from .chapter_manager import ChapterManager
-from .content_renderer import ContentRenderer
-from .epub_parser import EPUBParser
-from .progress_tracker import ProgressTracker
 
-__all__ = ["ChapterManager", "ContentRenderer", "EPUBParser", "ProgressTracker"]
+class SpeakUBError(Exception):
+    """Base exception for SpeakUB errors."""
+
+
+
+class NetworkError(SpeakUBError):
+    """Network-related errors."""
+
+
+
+class TTSError(SpeakUBError):
+    """TTS-related errors."""
+
+
+
+class ParseError(SpeakUBError):
+    """Parsing-related errors."""
+
+
+
+class ConfigurationError(SpeakUBError):
+    """Configuration-related errors."""
+
+
+
+class FileSizeError(SpeakUBError):
+    """File size-related errors."""
+
+
+
+class SecurityError(SpeakUBError):
+    """Security-related errors."""
+

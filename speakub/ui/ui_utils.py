@@ -3,11 +3,13 @@
 UI utilities for SpeakUB
 """
 
-import asyncio
-from typing import TYPE_CHECKING, Optional
+import logging
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from speakub.ui.app import EPUBReaderApp
+
+logger = logging.getLogger(__name__)
 
 
 class UIUtils:
@@ -37,8 +39,8 @@ class UIUtils:
             content_display.update_viewport_height(  # type: ignore[attr-defined]
                 new_height
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to calculate viewport height: {e}")
 
     def calculate_content_width(self) -> int:
         """Calculate content width based on terminal size."""
@@ -49,11 +51,13 @@ class UIUtils:
 
     def update_panel_focus(self) -> None:
         """Update panel focus indicators."""
-        toc, content = self.app.query_one("#toc-panel"), self.app.query_one(
-            "#content-panel"
+        toc, content = (
+            self.app.query_one("#toc-panel"),
+            self.app.query_one("#content-panel"),
         )
-        toc_tree, content_display = self.app.query_one("#toc-tree"), self.app.query_one(
-            "#content-display"
+        toc_tree, content_display = (
+            self.app.query_one("#toc-tree"),
+            self.app.query_one("#content-display"),
         )
         if self.app.current_focus == "toc":
             toc.add_class("focused")
@@ -73,8 +77,8 @@ class UIUtils:
                 toc_title_widget.update_texts(  # type: ignore
                     main_title="Table of Contents", right_title=source_file
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to update TOC panel title: {e}")
 
         try:
             if self.app.current_chapter:
@@ -86,8 +90,8 @@ class UIUtils:
                 content_title_widget.update_texts(  # type: ignore
                     main_title=title_text, right_title=filename
                 )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to update content panel title: {e}")
 
     def update_content_display(self) -> None:
         """Update content display with current viewport content."""
@@ -99,8 +103,8 @@ class UIUtils:
                 )  # type: ignore
             else:
                 content_display.update("No content loaded...")  # type: ignore
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to update content display: {e}")
 
     async def update_toc_tree(self, toc_data: dict) -> None:
         """Update the table of contents tree."""
@@ -114,8 +118,9 @@ class UIUtils:
                 """Recursively add nodes to the tree."""
                 if node_data.get("type") == "group":
                     # Create a group node
-                    group_node = parent.add(node_data.get(
-                        "title", "Group"), expand=False)
+                    group_node = parent.add(
+                        node_data.get("title", "Group"), expand=False
+                    )
                     for child in node_data.get("children", []):
                         add_node(group_node, child)
                 else:
@@ -127,5 +132,5 @@ class UIUtils:
                 add_node(tree.root, node)
 
             tree.root.expand()  # type: ignore
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to update TOC tree: {e}")

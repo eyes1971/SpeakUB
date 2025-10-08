@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 #!/usr/bin/env python3
 """
 Simple test to verify the TTS footer layout changes.
@@ -76,14 +83,12 @@ def test_update_method():
         print("   - Controls should show: 'Vol: 80% | Speed: +10% | Pitch: +5Hz'")
         print("   - Page should show: 'Page 1/2'")
 
-        return True
-
     except Exception as e:
         print(f"❌ Error testing update method: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        pytest.fail(f"Error during update method test: {e}")
 
 
 if __name__ == "__main__":

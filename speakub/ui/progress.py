@@ -16,8 +16,9 @@ if TYPE_CHECKING:
 class ProgressManager:
     """Manages reading progress and CFI handling."""
 
-    def __init__(self, app: "EPUBReaderApp"):
+    def __init__(self, app: "EPUBReaderApp", progress_callback):
         self.app = app
+        self.progress_callback = progress_callback
         self._progress_task: Optional[asyncio.Task] = None
         self._idle_mode = False
         self._idle_threshold = 30
@@ -26,11 +27,16 @@ class ProgressManager:
         self._active_tts_interval = 2.0
         self._last_user_activity = time.time()
 
+        # Progress save debouncing
+        self._progress_save_timer: Optional[asyncio.Task] = None
+        self._progress_save_delay = 5.0  # 5 second debouncing
+        self._pending_progress_save = False
+
     async def start_progress_tracking(self) -> None:
         """Start progress tracking timers."""
         try:
             self._progress_task = self.app.set_interval(
-                self._active_tts_interval, self.app._update_tts_progress
+                self._active_tts_interval, self.progress_callback
             )
         except Exception:
             pass
@@ -61,7 +67,7 @@ class ProgressManager:
                 self._idle_tts_interval if entering_idle else self._active_tts_interval
             )
             self._progress_task = self.app.set_interval(
-                interval, self.app._update_tts_progress
+                interval, self.progress_callback
             )
         except Exception:
             pass
@@ -126,7 +132,6 @@ class ProgressManager:
             return f"epubcfi(/6/{(spine_index + 1) * 2}!/4:0)"
         if not (0 <= line_num < len(self.app.viewport_content.content_lines)):
             line_num = 0
-        target_line = self.app.viewport_content.content_lines[line_num]
         char_offset_target = sum(
             len(ln) + 1 for ln in self.app.viewport_content.content_lines[:line_num]
         )
@@ -140,8 +145,9 @@ class ProgressManager:
             dist = abs(char_offset_target - (node_start + text_len / 2))
             if dist < min_distance:
                 min_distance = dist
-                best_node, best_offset = node, (
-                    0 if char_offset_target < node_start else text_len
+                best_node, best_offset = (
+                    node,
+                    (0 if char_offset_target < node_start else text_len),
                 )
             char_count_scanned += text_len + 1
         if best_node is None:
@@ -167,6 +173,9 @@ class ProgressManager:
                                 await self.app._load_chapter(chapter, from_start=True)
                                 try:
                                     cfi = self.get_cfi_from_line(position)
+                                    logger.info(
+                                        f"Migrated legacy position '{position}' to CFI '{cfi}'"
+                                    )
                                     await self.app._load_chapter(chapter, cfi=cfi)
                                 except (ValueError, EPUBCFIError):
                                     await self.app._load_chapter(
@@ -174,24 +183,51 @@ class ProgressManager:
                                     )
                             else:
                                 await self.app._load_chapter(chapter, from_start=True)
-        except Exception as e:
+        except Exception:
             pass
 
     def save_progress(self) -> None:
-        """Save current reading progress."""
+        """Save current reading progress with debouncing."""
         if (
             self.app.progress_tracker
             and self.app.current_chapter
             and self.app.viewport_content
         ):
-            try:
-                line_num = self.app.viewport_content.get_cursor_global_position()
-                cfi = self.get_cfi_from_line(line_num)
-                self.app.progress_tracker.save_progress(
-                    self.app.current_chapter["src"], cfi
-                )
-            except Exception:
-                pass
+            # Set pending save flag
+            self._pending_progress_save = True
+
+            # Cancel existing timer if any
+            if self._progress_save_timer:
+                try:
+                    self._progress_save_timer.cancel()
+                except Exception:
+                    pass
+
+            # Schedule delayed save
+            self._progress_save_timer = asyncio.create_task(
+                self._delayed_save_progress()
+            )
+
+    async def _delayed_save_progress(self) -> None:
+        """Perform delayed progress save after debouncing period."""
+        try:
+            await asyncio.sleep(self._progress_save_delay)
+
+            # Only save if still pending (not cancelled by another save request)
+            if self._pending_progress_save:
+                self._pending_progress_save = False
+                try:
+                    line_num = self.app.viewport_content.get_cursor_global_position()
+                    cfi = self.get_cfi_from_line(line_num)
+                    self.app.progress_tracker.save_progress(
+                        self.app.current_chapter["src"], cfi
+                    )
+                except Exception:
+                    pass
+        except asyncio.CancelledError:
+            # Save was cancelled, reset flag
+            self._pending_progress_save = False
+            raise
 
     def cleanup(self) -> None:
         """Clean up progress tracking resources."""
@@ -203,5 +239,10 @@ class ProgressManager:
         if self._idle_check_timer:
             try:
                 self._idle_check_timer.stop()
+            except Exception:
+                pass
+        if self._progress_save_timer:
+            try:
+                self._progress_save_timer.cancel()
             except Exception:
                 pass

@@ -13,7 +13,8 @@ class TTSPanel(Container):
     Call update_* methods to refresh text from app side (or let TTS widget call them).
     """
 
-    def __init__(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+    # type: ignore[no-untyped-def]
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
@@ -74,7 +75,6 @@ class TTSPanel(Container):
 
         # Configure center controls layout
         try:
-            center_controls = self.query_one("#tts-center-controls")
             volume_section = self.query_one("#tts-volume-section")
             speed_section = self.query_one("#tts-speed-section")
             pitch_section = self.query_one("#tts-pitch-section")
@@ -145,11 +145,16 @@ class TTSPanel(Container):
         except Exception as e:
             print(f"Warning: Failed to update now reading text: {e}")
 
-    def update_status(self, text: str) -> None:
+    def update_status(self, text: str, debug_info: str = "") -> None:
         """Update the TTS status text."""
         try:
             st = self.query_one("#tts-status-text", Static)
-            st.update(text)
+            if debug_info:
+                # Show debug info if available (for development)
+                full_text = f"{text}\n{debug_info}"
+            else:
+                full_text = text
+            st.update(full_text)
         except Exception as e:
             print(f"Warning: Failed to update TTS status: {e}")
 

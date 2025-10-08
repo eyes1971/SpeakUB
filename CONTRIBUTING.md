@@ -1,3 +1,11 @@
+
+
+
+
+
+
+
+
 # Contributing to SpeakUB
 
 Thank you for your interest in contributing to SpeakUB! This document provides guidelines and information for contributors.
