@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 cfi.py - EPUB Canonical Fragment Identifier implementation
@@ -5,8 +6,10 @@ Source: Ported from epub_cfi.py for Python EPUB reader
 """
 
 import re
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
+from weakref import WeakKeyDictionary
 
 from bs4 import NavigableString, Tag
 
@@ -15,11 +18,11 @@ class EPUBCFIError(Exception):
     """Base exception for EPUB CFI operations"""
 
 
-
 class CFIPart:
     """Represents a single CFI path part"""
 
-    __slots__ = ("index", "id", "offset", "temporal", "spatial", "text", "side")
+    __slots__ = ("index", "id", "offset", "temporal",
+                 "spatial", "text", "side")
 
     def __init__(
         self,
@@ -352,9 +355,11 @@ class CFI:
 class CFIGenerator:
     """Generate CFIs from HTML documents"""
 
-    _indexed_cache: Dict[int, Tuple[List[Any], float]] = {}
+    _indexed_cache: "WeakKeyDictionary[Any, Tuple[List[Any], float]]" = WeakKeyDictionary(
+    )
     _cache_max_size = 100
     _cache_ttl = 300  # 5 minutes
+    _lock = threading.Lock()
 
     @staticmethod
     def is_text_node(node: Any) -> bool:
@@ -387,22 +392,23 @@ class CFIGenerator:
         node_id = id(node)
         current_time = time.time()
 
-        # Check cache validity
-        if node_id in cls._indexed_cache:
-            cached_data, timestamp = cls._indexed_cache[node_id]
-            if current_time - timestamp < cls._cache_ttl:
-                return cached_data
+        with cls._lock:
+            # Check cache validity
+            if node_id in cls._indexed_cache:
+                cached_data, timestamp = cls._indexed_cache[node_id]
+                if current_time - timestamp < cls._cache_ttl:
+                    return cached_data
 
-        # Clean up expired cache entries if cache is too large
-        if len(cls._indexed_cache) > cls._cache_max_size:
-            expired = [
-                k
-                for k, (_, ts) in cls._indexed_cache.items()
-                if current_time - ts > cls._cache_ttl
-            ]
-            # Clean up half of expired entries
-            for k in expired[: len(expired) // 2]:
-                del cls._indexed_cache[k]
+            # Clean up expired cache entries if cache is too large
+            if len(cls._indexed_cache) > cls._cache_max_size:
+                expired = [
+                    k
+                    for k, (_, ts) in cls._indexed_cache.items()
+                    if current_time - ts > cls._cache_ttl
+                ]
+                # Clean up half of expired entries
+                for k in expired[: len(expired) // 2]:
+                    del cls._indexed_cache[k]
 
         nodes = cls.get_child_nodes(node)
         if not nodes:

@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #!/usr/bin/env python3
 """
 Test module for the voice selector functionality in VoiceSelectorPanel.

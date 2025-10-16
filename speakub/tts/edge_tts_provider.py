@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Edge-TTS Provider - Microsoft Edge TTS implementation.
@@ -45,7 +46,8 @@ class EdgeTTSProvider(TTSEngine):
 
         self.audio_player = AudioPlayer()
         self._voices_cache: Optional[List[Dict[str, Any]]] = None
-        self._current_voice = self.DEFAULT_VOICES.get("zh-TW", "zh-TW-HsiaoChenNeural")
+        self._current_voice = self.DEFAULT_VOICES.get(
+            "zh-TW", "zh-TW-HsiaoChenNeural")
 
         # State management using the unified TTSState
         self._audio_state = TTSState.IDLE
@@ -288,7 +290,8 @@ class EdgeTTSProvider(TTSEngine):
                     pass
                 raise e
         else:
-            logger.debug(f"Reusing existing temp file: {self._current_audio_file}")
+            logger.debug(
+                f"Reusing existing temp file: {self._current_audio_file}")
 
         # Update state: preparing to play
         self._update_state(TTSState.PLAYING)
@@ -309,7 +312,8 @@ class EdgeTTSProvider(TTSEngine):
         if self._current_audio_file and os.path.exists(self._current_audio_file):
             try:
                 os.unlink(self._current_audio_file)
-                logger.debug(f"Cleaned up temp file: {self._current_audio_file}")
+                logger.debug(
+                    f"Cleaned up temp file: {self._current_audio_file}")
             except Exception as e:
                 logger.warning(
                     f"Failed to delete temp file {self._current_audio_file}: {e}"
@@ -401,6 +405,7 @@ def cleanup_orphaned_tts_files(max_age_hours: int = 24) -> int:
     Args:
         max_age_hours: Remove files older than this many hours
     """
+    import contextlib
     import tempfile
     import time
     from pathlib import Path
@@ -419,7 +424,8 @@ def cleanup_orphaned_tts_files(max_age_hours: int = 24) -> int:
                 file_age = current_time - filepath.stat().st_mtime
                 if file_age > max_age_seconds:
                     file_size = filepath.stat().st_size
-                    filepath.unlink()
+                    with contextlib.suppress(Exception):
+                        filepath.unlink()
                     cleaned_count += 1
                     cleaned_size += file_size
             except Exception as e:

@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #!/usr/bin/env python3
 """
 Test script to verify Edge TTS pitch parameter behavior.
@@ -89,12 +83,12 @@ async def _test_pitch_value(pitch_value: str, text: str):
             temp_file_path = temp_file.name
 
         # Verify file was created and has content
-        assert os.path.exists(temp_file_path), (
-            f"Audio file not created for pitch {pitch_value}"
-        )
-        assert os.path.getsize(temp_file_path) > 0, (
-            f"Audio file is empty for pitch {pitch_value}"
-        )
+        assert os.path.exists(
+            temp_file_path
+        ), f"Audio file not created for pitch {pitch_value}"
+        assert (
+            os.path.getsize(temp_file_path) > 0
+        ), f"Audio file is empty for pitch {pitch_value}"
 
         # Clean up
         os.unlink(temp_file_path)

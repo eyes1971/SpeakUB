@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #!/usr/bin/env python3
 """
 Test edge cases for TTS exit fix.

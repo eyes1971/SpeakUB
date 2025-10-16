@@ -1,5 +1,4 @@
 
-
 #!/usr/bin/env python3
 """
 Test script for TTS integration functionality.
@@ -20,8 +19,8 @@ class MockApp:
     """Mock application for testing TTS integration."""
 
     def __init__(self):
-        self.tts_engine = None
-        self.tts_status = "STOPPED"
+        self._tts_engine = None
+        self._tts_status = "STOPPED"
         self.tts_smooth_mode = False
         self.tts_volume = 100
         self.tts_rate = 0
@@ -29,9 +28,26 @@ class MockApp:
         self.viewport_content = None
         self.chapter_manager = None
         self.epub_parser = None
+        self.epub_manager = None
         self.content_renderer = None
         self.current_chapter = None
         self.tts_widget = None
+
+    @property
+    def tts_engine(self):
+        return self._tts_engine
+
+    @tts_engine.setter
+    def tts_engine(self, value):
+        self._tts_engine = value
+
+    @property
+    def tts_status(self):
+        return self._tts_status
+
+    @tts_status.setter
+    def tts_status(self, value):
+        self._tts_status = value
 
     def notify(self, message, title="", severity="information"):
         """Mock notify method."""
@@ -126,8 +142,7 @@ class TestTTSIntegration:
         mock_viewport = MagicMock()
         mock_viewport.get_cursor_global_position.return_value = 0
         mock_viewport.line_to_paragraph_map = {0: {"index": 0}}
-        mock_viewport.paragraphs = [
-            {"start": 0, "end": 10}, {"start": 10, "end": 20}]
+        mock_viewport.paragraphs = [{"start": 0, "end": 10}, {"start": 10, "end": 20}]
         mock_viewport.get_paragraph_text.side_effect = ["Text 1", "Text 2"]
 
         mock_app.viewport_content = mock_viewport
@@ -146,7 +161,9 @@ class TestTTSIntegration:
         mock_app.viewport_content.paragraphs = [{"start": 0, "end": 10}]
         mock_app.viewport_content.get_paragraph_text.return_value = "Test text"
 
-        with patch.object(tts_integration, "start_tts_thread") as mock_start:
+        with patch.object(
+            tts_integration.playlist_manager, "has_items", return_value=False
+        ), patch.object(tts_integration, "start_tts_thread") as mock_start:
             tts_integration.handle_tts_play_pause()
             mock_start.assert_called_once()
 
@@ -154,7 +171,9 @@ class TestTTSIntegration:
         """Test play/pause handling from playing state."""
         mock_app.tts_status = "PLAYING"
 
-        with patch.object(tts_integration, "stop_speaking") as mock_stop:
+        with patch.object(
+            tts_integration.playback_manager, "stop_playback"
+        ) as mock_stop:
             tts_integration.handle_tts_play_pause()
             mock_stop.assert_called_once_with(is_pause=True)
             assert mock_app.tts_status == "PAUSED"
@@ -216,18 +235,21 @@ class TestTTSIntegration:
         """Test network error handling."""
         test_error = Exception("Network error")
 
+        # Mock call_from_thread to prevent actual execution
         with patch.object(mock_app, "call_from_thread") as mock_call:
             tts_integration._handle_network_error(test_error, "test")
 
+            # Check that network error occurred flag was set
             assert tts_integration.network_error_occurred
             assert tts_integration.last_tts_error == "Network error"
-            mock_call.assert_called()
+            # call_from_thread should have been called multiple times
+            assert mock_call.call_count >= 3  # At least 3 calls in handle_network_error
 
     def test_reset_network_error_state(self, tts_integration, mock_app):
         """Test resetting network error state."""
-        tts_integration.network_error_occurred = True
-        tts_integration.network_error_notified = True
-        tts_integration.network_recovery_notified = True
+        tts_integration.network_manager.network_error_occurred = True
+        tts_integration.network_manager.network_error_notified = True
+        tts_integration.network_manager.network_recovery_notified = True
 
         tts_integration.reset_network_error_state()
 
@@ -237,8 +259,10 @@ class TestTTSIntegration:
 
     def test_monitor_network_recovery_success(self, tts_integration, mock_app):
         """Test network recovery monitoring success."""
-        tts_integration.network_error_occurred = True
-        tts_integration.network_recovery_notified = False
+        tts_integration.network_manager.network_error_occurred = True
+        tts_integration.network_manager.network_recovery_notified = False
+        # Ensure tts_stop_requested is not set
+        tts_integration.tts_stop_requested.clear()
 
         with patch("socket.create_connection") as mock_socket:
             with patch.object(mock_app, "call_from_thread") as mock_call:
@@ -253,7 +277,7 @@ class TestTTSIntegration:
 
     def test_monitor_network_recovery_failure(self, tts_integration, mock_app):
         """Test network recovery monitoring failure."""
-        tts_integration.network_error_occurred = True
+        tts_integration.network_manager.network_error_occurred = True
         # Don't set tts_stop_requested so the loop runs
 
         with patch(
@@ -268,7 +292,7 @@ class TestTTSIntegration:
                     except OSError:
                         time.sleep(10)
                     # Exit the loop by setting network_error_occurred to False
-                    tts_integration.network_error_occurred = False
+                    tts_integration.network_manager.network_error_occurred = False
 
                 tts_integration._monitor_network_recovery = mock_monitor
                 tts_integration._monitor_network_recovery()
@@ -278,8 +302,7 @@ class TestTTSIntegration:
     async def test_update_tts_progress(self, tts_integration, mock_app):
         """Test TTS progress update."""
         mock_app.tts_status = "PLAYING"
-        tts_integration.playlist_manager.playlist = [
-            ("text1", 0), ("text2", 10)]
+        tts_integration.playlist_manager.playlist = [("text1", 0), ("text2", 10)]
         tts_integration.playlist_manager.current_index = 0
 
         # Mock the Static widget and query_one method

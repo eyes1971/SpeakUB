@@ -1,9 +1,11 @@
+
 #!/usr/bin/env python3
 """
 Progress management for SpeakUB
 """
 
 import asyncio
+import logging
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -11,6 +13,9 @@ from speakub.core.cfi import CFIGenerator, CFIResolver, EPUBCFIError
 
 if TYPE_CHECKING:
     from speakub.ui.app import EPUBReaderApp
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressManager:

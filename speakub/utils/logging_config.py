@@ -1,3 +1,4 @@
+
 """
 Centralized logging configuration for SpeakUB.
 """

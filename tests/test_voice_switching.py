@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #!/usr/bin/env python3
 """
 Test module for switching Edge-TTS voices during script execution.
@@ -157,9 +151,12 @@ class TestVoiceSwitching(unittest.TestCase):
         async def run_test():
             # Mock the communicate object
             mock_comm_instance = AsyncMock()
-            mock_comm_instance.stream.return_value = [
-                {"type": "audio", "data": b"test_audio_data"}
-            ]
+
+            # Create an async generator for stream
+            async def mock_stream():
+                yield {"type": "audio", "data": b"test_audio_data"}
+
+            mock_comm_instance.stream = mock_stream
             mock_communicate.return_value = mock_comm_instance
 
             # Test with default voice (should be zh-TW)
@@ -195,9 +192,12 @@ class TestVoiceSwitching(unittest.TestCase):
 
         async def run_test():
             mock_comm_instance = AsyncMock()
-            mock_comm_instance.stream.return_value = [
-                {"type": "audio", "data": b"test_audio_data"}
-            ]
+
+            # Create an async generator for stream
+            async def mock_stream():
+                yield {"type": "audio", "data": b"test_audio_data"}
+
+            mock_comm_instance.stream = mock_stream
             mock_communicate.return_value = mock_comm_instance
 
             # Test with custom parameters

@@ -1,7 +1,4 @@
 
-
-
-
 #!/usr/bin/env python3
 """
 Unit tests for EPUB parser functionality.
@@ -29,18 +26,15 @@ class TestNormalizeSrcForMatching:
 
     def test_normalize_with_path(self):
         """Test normalizing path with directories."""
-        assert normalize_src_for_matching(
-            "content/chapter1.html") == "chapter1.html"
+        assert normalize_src_for_matching("content/chapter1.html") == "chapter1.html"
 
     def test_normalize_with_fragment(self):
         """Test normalizing URL with fragment."""
-        assert normalize_src_for_matching(
-            "chapter1.html#section1") == "chapter1.html"
+        assert normalize_src_for_matching("chapter1.html#section1") == "chapter1.html"
 
     def test_normalize_percent_encoded(self):
         """Test normalizing percent-encoded URL."""
-        assert normalize_src_for_matching(
-            "chapter%201.html") == "chapter 1.html"
+        assert normalize_src_for_matching("chapter%201.html") == "chapter 1.html"
 
     def test_normalize_case_conversion(self):
         """Test case conversion to lowercase."""

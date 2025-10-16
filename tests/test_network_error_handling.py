@@ -1,10 +1,4 @@
 
-
-
-
-
-
-
 #!/usr/bin/env python3
 """
 Test script for TTS network error handling.
@@ -102,9 +96,9 @@ async def test_edge_tts_network_errors():
                 )
 
             except Exception as e:
-                assert time.time() - start_time < 1.5, (
-                    "Timeout should trigger in about 1 second"
-                )
+                assert (
+                    time.time() - start_time < 1.5
+                ), "Timeout should trigger in about 1 second"
                 print("✅ EXPECTED: Synthesis failed with network error")
                 print(f"   Error type: {type(e).__name__}")
                 print(f"   Error message: {str(e)}")
@@ -192,8 +186,7 @@ async def test_edge_tts_during_operation():
         print(
             "❌ UNEXPECTED: Synthesis succeeded despite network failure during operation"
         )
-        print(
-            f"   Audio data length: {len(audio_data) if audio_data else 0} bytes")
+        print(f"   Audio data length: {len(audio_data) if audio_data else 0} bytes")
 
     except asyncio.TimeoutError:
         print("⏰ Synthesis timed out")
@@ -225,10 +218,8 @@ async def test_edge_tts_during_operation():
             "resolution",
         ]
 
-        is_network_error = any(
-            keyword in error_msg for keyword in network_keywords)
-        print(
-            f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}")
+        is_network_error = any(keyword in error_msg for keyword in network_keywords)
+        print(f"   Is network error: {'✅ Yes' if is_network_error else '❌ No'}")
 
     finally:
         # Restore network functionality
@@ -340,8 +331,7 @@ if __name__ == "__main__":
         elif test_type == "mock":
             mock_aiohttp_connector()
         else:
-            print(
-                "Usage: python test_network_error_handling.py [command|mock]")
+            print("Usage: python test_network_error_handling.py [command|mock]")
             print("  command: Test edge-tts command line")
             print("  mock: Test with mocked aiohttp connector")
     else:

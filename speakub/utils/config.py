@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 This module handles configuration management for the EPUB reader.
@@ -62,48 +63,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "benchmark_output_file": "performance_benchmark.json",  # Benchmark output file
     },
 }
-
-
-def load_config() -> Dict[str, Any]:
-    """
-    Loads the configuration from the JSON file.
-    If the file doesn't exist, it creates one with default settings.
-
-    Returns:
-        Dict[str, Any]: The configuration dictionary.
-    """
-    if not os.path.exists(CONFIG_FILE):
-        logger.debug("Configuration file not found. Creating with default settings.")
-        save_config(DEFAULT_CONFIG)
-        return DEFAULT_CONFIG.copy()
-
-    try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            config = json.load(f)
-            # Merge with defaults to ensure all keys are present
-            merged_config = DEFAULT_CONFIG.copy()
-            merged_config.update(config)
-            return merged_config
-    except (IOError, json.JSONDecodeError) as e:
-        logger.error(f"Error loading configuration file: {e}")
-        # Fallback to default configuration
-        return DEFAULT_CONFIG.copy()
-
-
-def save_config(config: Dict[str, Any]) -> None:
-    """
-    Saves the configuration to the JSON file.
-
-    Args:
-        config (Dict[str, Any]): The configuration dictionary to save.
-    """
-    try:
-        os.makedirs(CONFIG_DIR, exist_ok=True)
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4, ensure_ascii=False)
-        logger.debug(f"Configuration saved to {CONFIG_FILE}")
-    except IOError as e:
-        logger.error(f"Error saving configuration file: {e}")
 
 
 _hardware_profile: Optional[str] = None
@@ -381,8 +340,10 @@ def save_pronunciation_corrections(corrections: Dict[str, str]) -> None:
         if not corrections:
             instructions_content = {
                 "_comment": "Chinese Pronunciation Corrections Configuration",
-                "_instructions": "Add your correction rules below in format: "
-                "'original': 'corrected'",
+                "_instructions": (
+                    "Add your correction rules below in format: "
+                    "'original': 'corrected'"
+                ),
                 "_examples": {"生長": "生掌", "長": "常"},
             }
             with open(CORRECTIONS_FILE, "w", encoding="utf-8") as f:
@@ -414,7 +375,8 @@ def load_pronunciation_corrections() -> Dict[str, str]:
             corrections = json.load(f)
             if not isinstance(corrections, dict):
                 logger.warning(
-                    f"'{CORRECTIONS_FILE}' root element is not a JSON object (dict), ignored."
+                    f"'{CORRECTIONS_FILE}' root element is not a JSON object (dict), "
+                    "ignored."
                 )
                 return {}
 
@@ -509,7 +471,7 @@ class ConfigManager:
                 continue
 
             # Remove prefix and convert to lowercase with underscores
-            config_key = env_key[len(prefix) :].lower()
+            config_key = env_key[len(prefix):].lower()
 
             # Convert underscores to dots for nested access
             config_key = config_key.replace("_", ".")
@@ -649,7 +611,6 @@ class ConfigManager:
         config = self._load_config_with_hierarchy()
 
         # Remove runtime overrides for saving
-        config_without_overrides = DEFAULT_CONFIG.copy()
         file_config = {}
 
         # Extract file-level config (remove defaults and env vars)

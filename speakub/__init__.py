@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 SpeakUB - A modern terminal EPUB reader with TTS support.

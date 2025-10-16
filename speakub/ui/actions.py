@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # Action handlers for SpeakUB Application
 

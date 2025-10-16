@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Content Renderer - Converts HTML content to text for display.
@@ -16,15 +17,16 @@ from speakub.utils.text_utils import str_display_width, trace_log
 
 
 class AdaptiveCache:
-    """Adaptive cache manager with TTL and statistics support."""
+    """Adaptive cache manager with TTL, memory limits, and statistics support."""
 
-    def __init__(self, max_size: int, ttl: int = 300):
+    def __init__(self, max_size: int, ttl: int = 300, max_memory_mb: int = 100):
         """
-        Initialize adaptive cache.
+        Initialize adaptive cache with memory management.
 
         Args:
-            max_size: Maximum cache size
+            max_size: Maximum cache size (number of items)
             ttl: Cache time-to-live in seconds
+            max_memory_mb: Maximum memory usage in MB
         """
         self._cache: OrderedDict = OrderedDict()
         self._max_size = max_size
@@ -32,6 +34,8 @@ class AdaptiveCache:
         self._access_times: Dict[str, float] = {}
         self._hit_count = 0
         self._miss_count = 0
+        self._max_memory_bytes = max_memory_mb * 1024 * 1024
+        self._current_memory_bytes = 0
 
     def get(self, key):
         """Get cache item and update access time."""
@@ -53,15 +57,31 @@ class AdaptiveCache:
         return None
 
     def set(self, key, value):
-        """Set cache item."""
-        if len(self._cache) >= self._max_size:
-            # Remove oldest item
+        """Set cache item with memory management."""
+        # Estimate memory usage
+        import sys
+        value_size = sys.getsizeof(value)
+
+        # If adding this item would exceed memory limit, clean up old items
+        while (self._current_memory_bytes + value_size > self._max_memory_bytes
+               and len(self._cache) > 0):
             oldest_key = next(iter(self._cache))
+            old_value = self._cache[oldest_key]
+            self._current_memory_bytes -= sys.getsizeof(old_value)
+            del self._cache[oldest_key]
+            del self._access_times[oldest_key]
+
+        # If still at max size, remove oldest item
+        if len(self._cache) >= self._max_size:
+            oldest_key = next(iter(self._cache))
+            old_value = self._cache[oldest_key]
+            self._current_memory_bytes -= sys.getsizeof(old_value)
             del self._cache[oldest_key]
             del self._access_times[oldest_key]
 
         self._cache[key] = value
         self._access_times[key] = time.time()
+        self._current_memory_bytes += value_size
 
     def get_stats(self) -> Dict[str, float]:
         """Get cache statistics."""
@@ -93,7 +113,8 @@ class EPUBTextRenderer(html2text.HTML2Text):
     # type: ignore
     def handle_tag(self, tag: str, attrs: dict, start: bool) -> Optional[str]:
         """Handle unsupported HTML tags."""
-        unsupported_tags = ["video", "audio", "script", "iframe", "svg", "canvas"]
+        unsupported_tags = ["video", "audio",
+                            "script", "iframe", "svg", "canvas"]
 
         if tag in unsupported_tags:
             if start:
@@ -131,6 +152,9 @@ class ContentRenderer:
         self._renderer_cache = AdaptiveCache(
             max_size=base_size, ttl=300  # 5 minutes TTL
         )
+
+        # Add width cache for performance
+        self._width_cache: Dict[str, int] = {}
 
     def _get_adaptive_cache_size(self) -> int:
         """
@@ -190,11 +214,13 @@ class ContentRenderer:
             # Apply our CJK-aware wrapping to all lines
             lines = self._fix_cjk_line_wrapping(lines, render_width)
 
-            trace_log(f"[INFO] Rendered {len(lines)} lines with html2text", self.trace)
+            trace_log(
+                f"[INFO] Rendered {len(lines)} lines with html2text", self.trace)
             return lines
 
         except Exception as e:
-            trace_log(f"[WARN] html2text failed: {e}. Using fallback.", self.trace)
+            trace_log(
+                f"[WARN] html2text failed: {e}. Using fallback.", self.trace)
             return self._fallback_render(html_content, render_width)
 
     def _fix_cjk_line_wrapping(self, lines: List[str], width: int) -> List[str]:
@@ -245,7 +271,11 @@ class ContentRenderer:
         Returns:
             Display width
         """
-        return str_display_width(text)
+        if text in self._width_cache:
+            return self._width_cache[text]
+        width = str_display_width(text)
+        self._width_cache[text] = width
+        return width
 
     def _split_text_by_width(self, text: str, width: int) -> List[str]:
         """
@@ -314,7 +344,8 @@ class ContentRenderer:
                 paragraph_lines = self._split_text_by_width(paragraph, width)
                 lines.extend(paragraph_lines)
 
-            trace_log(f"[INFO] Fallback rendered {len(lines)} lines", self.trace)
+            trace_log(
+                f"[INFO] Fallback rendered {len(lines)} lines", self.trace)
             return lines
 
         except Exception as e:

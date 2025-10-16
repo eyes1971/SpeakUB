@@ -1,3 +1,4 @@
+
 """
 Playback Manager for TTS in SpeakUB.
 Handles playback thread lifecycle using a thread pool for efficiency.

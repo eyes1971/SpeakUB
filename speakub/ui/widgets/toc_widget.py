@@ -1,3 +1,4 @@
+
 """
 TOC (Table of Contents) widget for the EPUB reader.
 """

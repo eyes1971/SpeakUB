@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 This module provides file-related utility functions for the EPUB reader.

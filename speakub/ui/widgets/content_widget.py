@@ -1,3 +1,4 @@
+
 """
 Content display widget for the EPUB reader.
 """

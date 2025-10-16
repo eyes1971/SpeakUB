@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 TTS Widget - UI controls for text-to-speech functionality.

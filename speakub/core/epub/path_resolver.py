@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Path resolution helpers for EPUB parsing.

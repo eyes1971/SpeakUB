@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Chapter Manager - Handles chapter navigation and organization.

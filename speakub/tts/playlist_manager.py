@@ -1,3 +1,4 @@
+
 """
 Playlist Manager for TTS in SpeakUB.
 Handles playlist generation and indexing.
@@ -28,7 +29,8 @@ class PlaylistManager:
     def generate_playlist(self) -> None:
         """Generate TTS playlist from current content."""
         # The prepare_tts_playlist function will now populate self.playlist directly.
-        prepare_tts_playlist(self)
+        with self.tts_integration.tts_lock:
+            prepare_tts_playlist(self)
 
     def load_next_chapter(self) -> bool:
         """Load next chapter for TTS."""

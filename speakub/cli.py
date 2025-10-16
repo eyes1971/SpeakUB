@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 SpeakUB CLI - Entry point for the application
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from speakub.ui.app import EPUBReaderApp
+from speakub.utils.system_utils import find_terminal_emulator
 
 
 def is_running_in_terminal(debug: bool = False) -> bool:
@@ -22,7 +24,7 @@ def is_running_in_terminal(debug: bool = False) -> bool:
     - If not tty, we need to relaunch in terminal
     - If tty, check if it's a proper terminal
     """
-    # Basic check: stdout and stderr must both be tty
+    # Basic check: at least stderr must be tty (for interactive apps)
     stdout_is_tty = sys.stdout.isatty()
     stderr_is_tty = sys.stderr.isatty()
     if debug:
@@ -31,83 +33,65 @@ def is_running_in_terminal(debug: bool = False) -> bool:
             file=sys.stderr,
         )
 
-    if not (stdout_is_tty and stderr_is_tty):
-        if debug:
-            print(
-                "DEBUG: Not running in tty, need to relaunch in terminal",
-                file=sys.stderr,
-            )
-        return False
-
     # Check TERM environment variable
     term = os.environ.get("TERM", "")
     if debug:
         print(f"DEBUG: TERM={term}", file=sys.stderr)
-    if not term or term == "dumb":
-        if debug:
-            print("DEBUG: TERM is not set or dumb, need to relaunch", file=sys.stderr)
-        return False
 
-    # If we're in a proper terminal, we're good
-    if term in ("xterm", "xterm-256color", "screen", "tmux", "linux"):
+    # If stderr is a tty, we're likely in a terminal (even if TERM is unknown)
+    if stderr_is_tty:
         if debug:
-            print("DEBUG: In proper terminal, returning True", file=sys.stderr)
+            print("DEBUG: stderr is tty, assuming we're in a terminal",
+                  file=sys.stderr)
+        return True
+
+    # Special case: if TERM is xterm-256color, assume we're in a compatible environment
+    # This handles cases like VSCode terminal, desktop integration, and other GUI environments
+    if term == "xterm-256color":
+        if debug:
+            print(
+                "DEBUG: TERM is xterm-256color, assuming compatible terminal",
+                file=sys.stderr,
+            )
+        return True
+
+    # Check for common terminal types that support TUI applications
+    if term and (
+        term.startswith(
+            (
+                "xterm",
+                "screen",
+                "tmux",
+                "linux",
+                "alacritty",
+                "rxvt",
+                "konsole",
+                "gnome",
+                "xfce",
+            )
+        )
+        or term in ("alacritty", "kitty", "st", "foot")
+    ):
+        if debug:
+            print(
+                f"DEBUG: TERM {term} indicates compatible terminal, assuming OK",
+                file=sys.stderr,
+            )
+        return True
+
+    # If TERM is set to something reasonable, assume it's a terminal
+    if term and term not in ("dumb", "unknown"):
+        if debug:
+            print(
+                f"DEBUG: TERM is set to {term}, assuming terminal", file=sys.stderr)
         return True
 
     if debug:
         print(
-            "DEBUG: TERM not recognized as proper terminal, need to relaunch",
+            "DEBUG: Cannot determine terminal environment, stderr_is_tty={stderr_is_tty}, TERM={term}",
             file=sys.stderr,
         )
     return False
-
-
-def find_terminal_emulator() -> Optional[tuple[str, List[str]]]:
-    """
-    Find an available terminal emulator and return the launch command
-    Returns (terminal_name, command_args) or None
-    """
-    # Terminal emulator list, in order of preference
-    terminals = [
-        ("xterm", ["xterm", "-e"]),
-        ("xfce4-terminal", ["xfce4-terminal", "-e"]),
-        ("foot", ["foot", "-e"]),
-        ("alacritty", ["alacritty", "-e"]),
-        ("kitty", ["kitty", "-e"]),
-        ("wezterm", ["wezterm", "start", "--"]),
-        ("gnome-terminal", ["gnome-terminal", "--"]),
-        ("konsole", ["konsole", "-e"]),
-        ("urxvt", ["urxvt", "-e"]),
-        ("st", ["st", "-e"]),
-    ]
-
-    # First check the system default terminal ($TERMINAL environment variable)
-    default_term = os.environ.get("TERMINAL")
-    if default_term:
-        for term_name, cmd_args in terminals:
-            if term_name == default_term:
-                try:
-                    result = subprocess.run(
-                        ["which", term_name], capture_output=True, timeout=1
-                    )
-                    if result.returncode == 0:
-                        return (term_name, cmd_args)
-                except (subprocess.TimeoutExpired, FileNotFoundError):
-                    continue
-
-    # If no default terminal or not found, check in order of preference
-    for term_name, cmd_args in terminals:
-        # Check if the terminal can be found
-        try:
-            result = subprocess.run(
-                ["which", term_name], capture_output=True, timeout=1
-            )
-            if result.returncode == 0:
-                return (term_name, cmd_args)
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            continue
-
-    return None
 
 
 def relaunch_in_terminal(original_args: List[str], debug: bool = False) -> None:
@@ -222,7 +206,8 @@ def main(argv: Optional[List[str]] = None) -> None:
     # ===== Parse arguments first to get debug flag =====
     parser = argparse.ArgumentParser(description="SpeakUB")
     parser.add_argument("epub", help="Path to EPUB file")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--debug", action="store_true",
+                        help="Enable debug logging")
     parser.add_argument("--log-file", help="Path to log file")
     args = parser.parse_args(argv)
 
@@ -237,10 +222,16 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     # ===== Check if running in terminal =====
     if not is_running_in_terminal(args.debug):
-        if args.debug:
-            print("DEBUG: Not running in terminal, relaunching...", file=sys.stderr)
-        relaunch_in_terminal(argv or sys.argv[1:], args.debug)
-        return  # relaunch_in_terminal calls sys.exit(0)
+        print("Error: SpeakUB requires a terminal environment to run.", file=sys.stderr)
+        print(
+            "Please run SpeakUB from a terminal or use a terminal emulator.",
+            file=sys.stderr,
+        )
+        print(
+            "If you're launching from a file manager, try running it from the command line instead.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if args.debug and not args.log_file:
         log_dir = Path.home() / ".local/share/speakub/logs"
@@ -249,11 +240,14 @@ def main(argv: Optional[List[str]] = None) -> None:
         args.log_file = str(log_dir / f"speakub-{ts}.log")
         print(f"Debug logging to: {args.log_file}")
 
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    handlers: List[logging.Handler] = [logging.StreamHandler()]
+    log_level = logging.DEBUG if args.debug else logging.ERROR
+    handlers: List[logging.Handler] = []
+    if args.debug:
+        handlers.append(logging.StreamHandler())
     if args.log_file:
         handlers.append(
-            logging.FileHandler(Path(args.log_file).expanduser(), encoding="utf-8")
+            logging.FileHandler(
+                Path(args.log_file).expanduser(), encoding="utf-8")
         )
     logging.basicConfig(
         level=log_level,
@@ -266,7 +260,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         print(f"Error: EPUB file not found: {epub_path}", file=sys.stderr)
         sys.exit(1)
 
-    app = EPUBReaderApp(str(epub_path), debug=args.debug, log_file=args.log_file)
+    app = EPUBReaderApp(str(epub_path), debug=args.debug,
+                        log_file=args.log_file)
     app.run()
 
 

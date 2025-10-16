@@ -123,7 +123,6 @@ speakub/
 │   │   ├── ui/runners.py       # TTS workers (English comments)
 │   │   └── audio_player.py     # Audio playback
 │   ├── ui/               # User interfaces
-│   │   ├── ui_components.py    # Rich/Textual UI components
 │   │   └── widgets/            # Reusable components
 │   ├── utils/            # Utility functions
 │   │   ├── performance_monitor.py # Performance monitoring
@@ -133,7 +132,6 @@ speakub/
 ├── tests/                # Test suite
 │   ├── test_performance_benchmarks.py # Performance benchmarks
 │   └── test_tts_state_machine.py      # TTS state machine tests
-├── tools/                # Development tools and scripts
 └── docs/                 # Documentation
 ```
 

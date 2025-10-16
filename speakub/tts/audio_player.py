@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Audio Player - Handles audio playback for TTS.
@@ -322,14 +323,14 @@ class AudioPlayer:
 
     def cleanup(self) -> None:
         """Clean up resources."""
+        import contextlib
+
         self.stop()
         self._stop_position_tracking()
 
         if self.current_file and Path(self.current_file).parent.name.startswith("tmp"):
-            try:
+            with contextlib.suppress(Exception):
                 Path(self.current_file).unlink(missing_ok=True)
-            except Exception:
-                pass
 
     def __del__(self):
         """Destructor."""

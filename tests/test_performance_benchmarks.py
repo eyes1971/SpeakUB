@@ -70,8 +70,7 @@ def benchmark_cache_performance():
 
         # Results
         adaptive_hit_rate = hits / operations
-        speedup = legacy_time / \
-            adaptive_time if adaptive_time > 0 else float('inf')
+        speedup = legacy_time / adaptive_time if adaptive_time > 0 else float("inf")
 
         print(".4f")
         print(".4f")
@@ -101,7 +100,8 @@ def benchmark_memory_usage():
         for i in range(size):
             # Create some EPUBTextRenderer-like objects
             cache.set(
-                i, f"test_renderer_{i}_with_longer_content_to_use_more_memory" * 10)
+                i, f"test_renderer_{i}_with_longer_content_to_use_more_memory" * 10
+            )
 
         current_memory = process.memory_info().rss / 1024 / 1024
         memory_used = current_memory - initial_memory
@@ -167,6 +167,7 @@ def run_all_benchmarks():
     except Exception as e:
         print(f"Benchmark failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

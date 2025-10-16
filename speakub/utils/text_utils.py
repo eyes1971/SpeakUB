@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Text processing utilities.
@@ -5,6 +6,7 @@ Text processing utilities.
 
 import re
 import unicodedata
+from functools import lru_cache
 from typing import Dict
 
 from wcwidth import wcswidth
@@ -25,7 +27,8 @@ _MULTIPLE_DASHES_PATTERN = re.compile(r"[-]{3,}")
 _SENTENCE_PAUSE_PATTERN = re.compile(r"([.!?])\s*\n\s*")
 _COLON_PAUSE_PATTERN = re.compile(r":\s*\n")
 _MARKDOWN_CHARS_PATTERN = re.compile(r"[#*_`]+")
-_CHAPTER_PREFIX_PATTERN = re.compile(r"^(Chapter\s+\d+[:\-\s]*)", re.IGNORECASE)
+_CHAPTER_PREFIX_PATTERN = re.compile(
+    r"^(Chapter\s+\d+[:\-\s]*)", re.IGNORECASE)
 _CHINESE_CHAPTER_PREFIX_PATTERN = re.compile(r"^(第\s*\d+\s*[章节][:\-\s]*)")
 _SENTENCE_ENDINGS_PATTERN = re.compile(r"[.!?]+")
 
@@ -34,7 +37,8 @@ _corrections_map: Dict[str, str] = load_pronunciation_corrections()
 
 # Core logic: Pre-process sorted correction keys at module load time
 # Sort keys by length from longest to shortest
-_sorted_correction_keys = sorted(_corrections_map.keys(), key=len, reverse=True)
+_sorted_correction_keys = sorted(
+    _corrections_map.keys(), key=len, reverse=True)
 
 
 def trace_log(message: str, enabled: bool) -> None:
@@ -300,7 +304,7 @@ def normalize_chapter_title(title: str) -> str:
 
     # Remove common prefixes that might be redundant
     title = _CHAPTER_PREFIX_PATTERN.sub("", title)
-    # Remove Chinese chapter prefixes (e.g., "第1章", "第2节")
+    # Remove Chinese chapter prefixes (e.g., "Chapter 1", "Section 2")
     title = _CHINESE_CHAPTER_PREFIX_PATTERN.sub("", title)
 
     # Clean up remaining text
@@ -341,7 +345,8 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
 
     # Calculate average word length
     word_lengths = [len(word.strip(".,!?;:")) for word in text.split()]
-    avg_word_length = sum(word_lengths) / len(word_lengths) if word_lengths else 0
+    avg_word_length = sum(word_lengths) / \
+        len(word_lengths) if word_lengths else 0
 
     # Simple complexity estimation
     if sentences == 0:
@@ -366,6 +371,7 @@ def extract_reading_level(text: str) -> dict[str, float | int | str]:
     }
 
 
+@lru_cache(maxsize=1000)
 def correct_chinese_pronunciation(text: str) -> str:
     """
     Correct Chinese pronunciation using external configuration file
@@ -387,6 +393,7 @@ def correct_chinese_pronunciation(text: str) -> str:
         # Check if the normalized word exists in normalized text
         if normalized_key in normalized_text:
             replacement = _corrections_map[original_word]
-            normalized_text = normalized_text.replace(normalized_key, replacement)
+            normalized_text = normalized_text.replace(
+                normalized_key, replacement)
 
     return normalized_text

@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 TTS integration for SpeakUB
@@ -45,8 +46,9 @@ class TTSIntegration:
         self.tts_pre_synthesis_thread: Optional[threading.Thread] = None
         self.tts_lock = threading.RLock()
         self.tts_stop_requested = threading.Event()
-        self.tts_thread_active = False
-        self.last_tts_error = None
+        with self.tts_lock:
+            self.tts_thread_active = False
+            self.last_tts_error = None
 
         self.tts_synthesis_ready = threading.Event()
         self.tts_playback_ready = threading.Event()
@@ -124,7 +126,8 @@ class TTSIntegration:
                             if tts_panel and hasattr(tts_panel, "update_status"):
                                 # Get current status and add debug info
                                 current_status = status_text
-                                tts_panel.update_status(current_status, debug_info)
+                                tts_panel.update_status(
+                                    current_status, debug_info)
                         except Exception:
                             pass  # Ignore if panel doesn't exist or doesn't support debug info
             except Exception:
@@ -160,7 +163,8 @@ class TTSIntegration:
                     worker_func = functools.partial(
                         find_and_play_next_chapter_worker, self
                     )
-                    self.app.run_worker(worker_func, exclusive=True, thread=True)
+                    self.app.run_worker(
+                        worker_func, exclusive=True, thread=True)
 
     def stop_speaking(self, is_pause: bool = False) -> None:
         """Stop TTS playback."""
@@ -196,7 +200,8 @@ class TTSIntegration:
         try:
             corrected_text = correct_chinese_pronunciation(text)
             rate, volume = f"{self.app.tts_rate:+}%", f"{self.app.tts_volume - 100:+}%"
-            kwargs = {"rate": rate, "volume": volume, "pitch": self.app.tts_pitch}
+            kwargs = {"rate": rate, "volume": volume,
+                      "pitch": self.app.tts_pitch}
             if hasattr(self.app.tts_engine, "speak_text_sync"):
                 self.app.tts_engine.speak_text_sync(corrected_text, **kwargs)
         except Exception as e:

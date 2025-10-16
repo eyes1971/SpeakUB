@@ -16,8 +16,8 @@ class TestTTSStateMachine(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        with patch('speakub.tts.edge_tts_provider.EDGE_TTS_AVAILABLE', True):
-            with patch('speakub.tts.edge_tts_provider.AudioPlayer'):
+        with patch("speakub.tts.edge_tts_provider.EDGE_TTS_AVAILABLE", True):
+            with patch("speakub.tts.edge_tts_provider.AudioPlayer"):
                 self.provider = EdgeTTSProvider()
 
     def test_initial_state(self):
@@ -136,8 +136,7 @@ class TestTTSStateMachine(unittest.TestCase):
         # PLAYING -> IDLE should be invalid
         result = self.provider._transition_state(TTSState.IDLE)
         self.assertFalse(result)
-        self.assertEqual(self.provider._audio_state,
-                         TTSState.PLAYING)  # unchanged
+        self.assertEqual(self.provider._audio_state, TTSState.PLAYING)  # unchanged
 
     def test_backward_compatibility(self):
         """Test _is_paused flag is maintained for backward compatibility."""
